@@ -53,6 +53,7 @@
 - [x] Phase 6 — Workflow engine (12-edge transition graph, gate integration, `requires_state` checks, `canon_approve` tool, resume-on-exit scan), +29 tests
 - [x] Phase 7 — tmux UI sketch (optional tmux layout + `extensions/tmux/widget.ts` custom widget — works in plain pi without tmux), +7 tests
 - [x] Phase 8 — LLM Wiki (`extensions/wiki/` + `extensions/tools/wiki-search.ts`; SQLite consumer of wst NovelScribe reference corpus; FTS5 BM25 + LLM rerank top 5; per ADR-0006; `wikiDbPath` in `.pi/settings.json`), +21 tests
+- [x] Phase 9 — Multilingual (en + zh) (`extensions/i18n/` module + `prompts/zh/*.md`; localized tool descriptions / prompts / status display; per ADR-0007; override chain = command flag > chapter frontmatter > settings > auto-detect > fallback; `/novel write --lang=zh`), +27 tests
 
 ### Resolved terms (formerly open)
 

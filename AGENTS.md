@@ -90,63 +90,45 @@ These are non-negotiable. Violating any of them breaks the system.
 
 ---
 
-## Layout (planned)
+## Layout (current — Phase 0–8 shipped)
 
 ```
 pi-novel-scribe/
-├── package.json                # pi extension manifest under "pi" key
+├── package.json                # pi manifest + scripts (vitest 5, biome 2.5, TS 7)
 ├── tsconfig.json               # strict, Node strip-only (erasable TS)
-├── biome.json                  # lint + format
+├── biome.json                  # lint + format (v2 schema)
+├── vitest.config.ts            # v8 coverage provider
 │
 ├── extensions/                 # pi auto-loads from this convention dir
-│   ├── index.ts                # ExtensionAPI default export; registers tools/commands
-│   ├── agents/
-│   │   ├── director.ts
-│   │   ├── planner.ts
-│   │   ├── writer.ts
-│   │   ├── critic.ts
-│   │   └── continuity.ts
-│   ├── subagents/
-│   ├── editor/                 # $VISUAL/$EDITOR integration + before/after diff
-│   ├── workflow/               # /novel plan|write|review|revise state machines
-│   └── tools/                  # novel_state_read, novel_state_write, canon_propose, …
+│   ├── index.ts                # ExtensionAPI default export; registers Director + 5 agents + status widget + wiki_search tool
+│   ├── commands/novel-write.ts # /novel write handler
+│   ├── agents/                 # director, planner, writer, critic, continuity (LLM-driven via ctx.modelRegistry.complete)
+│   ├── orchestrator/           # director.ts (registers the Director tool) + route.ts (loadRouteTable, matchRoute, phrase > keyword priority)
+│   ├── novel/                  # schemas, canon, canon-approval, continuity (read), continuity-refresh,
+│   │                           #   context, plan-context, critic-context, resume-scan, requires-state, yaml-extract
+│   ├── editor/                 # open.ts (VISUAL/EDITOR + platform fallback, Injection), gate.ts (openApprovalGate + decideOutcome)
+│   ├── state/path-resolver.ts  # novelRepo resolution (Q1 / ADR-0001)
+│   ├── workflow/               # status.ts (10-status enum + frontmatter parser/serializer),
+│   │                           # transitions.ts (12-edge graph + BFS path finder)
+│   ├── tmux/widget.ts          # Phase 7 status widget (works without tmux)
+│   ├── wiki/                   # ADR-0006: schema.ts, db.ts (node:sqlite via createRequire),
+│   │                           #   fts.ts (FTS5 BM25 candidates), rerank.ts (LLM top-5),
+│   │                           #   index.ts (public searchWiki entry)
+│   └── tools/wiki-search.ts    # pi tool wrapper for the wiki
 │
-├── skills/                     # on-demand methodologies (SKILL.md each)
-│   ├── snowflake/
-│   ├── story-arc/
-│   ├── scene-design/
-│   ├── character-arc/
-│   ├── show-dont-tell/
-│   ├── dialogue/
-│   ├── foreshadowing/
-│   ├── pacing/
-│   ├── cliffhanger/
-│   ├── continuity/
-│   ├── prose-review/
-│   └── rewrite/
+├── config/route.yaml           # 9 intents (write, plan, review, revise, continue, inspect, investigate, approve, reject)
+├── prompts/                    # agent prompt templates (Markdown, loaded by Writer/Planner/Critic at runtime)
 │
-├── prompts/                    # slash templates (/novel-plan, /novel-review, …)
-│   ├── director.md
-│   ├── planner.md
-│   ├── writer.md
-│   ├── critic.md
-│   └── continuity.md
-│
-├── schemas/                    # JSON Schema for novel-state contracts
-│   ├── character.schema.json
-│   ├── scene.schema.json
-│   ├── storyline.schema.json
-│   ├── foreshadowing.schema.json
-│   └── canon-change.schema.json
-│
-├── tests/
-│   └── …                       # vitest; mock ctx.modelRegistry for offline runs
+├── tests/                      # 21 vitest spec files (205 tests, 82.64% statement coverage)
+│   └── _helpers/               # fakePi.ts (captures registered tools), fakeChild.ts (EventEmitter-based spawn)
 │
 └── docs/
-    └── adr/                    # Architecture Decision Records (split from review doc as we ship)
+    ├── README.md               # doc index
+    ├── adr/                    # 6 ADRs (0001–0006)
+    └── phase-7/README.md       # tmux UI stance + opt-in layout
 ```
 
-> **Layout is the recommended shape**, not carved in stone. The architecture review's §24 / §26 / §29 list the P0 implementation priorities: **Novel State schemas, Character Knowledge model, Scene model, Story Line model** before everything else. Don't add files for layers that don't have a spec yet.
+> **Layout reflects what's actually shipped**, not what was planned. The architecture review's §29 design priorities are now resolved (see §"Project status" below). Skills, subagents, and `subagents/` are **deferred** (ADR-0005: subagents earned, not declared; skills come when measured need appears).
 
 ---
 
@@ -219,8 +201,9 @@ The architecture review's §29 names the priority order. For Phase 0 (extension 
 - ✅ **Phase 5 — Novel State** (P0 schemas: Character, Character Knowledge, Scene, StoryLine, Foreshadowing, UnresolvedThread, TimelineEvent, CanonChange; canon propose/apply/deprecate lifecycle)
 - ✅ **Phase 6 — Workflow engine** (12-edge transition graph, gate integration, `requires_state` checks, `canon_approve` tool, resume-on-exit scan)
 - ✅ **Phase 7 — tmux UI** (optional tmux layout + `extensions/tmux/widget.ts` custom widget — works in plain pi without tmux; 7 widget tests)
-- ✅ **Phase 8 — LLM Wiki** (`extensions/wiki/` + `extensions/tools/wiki-search.ts`; read-only SQLite consumer of the wst NovelScribe reference corpus; FTS5 BM25 + LLM rerank top 5; per ADR-0006; 21 tests)
+- ✅ **Phase 8 — LLM Wiki** (`extensions/wiki/` + `extensions/tools/wiki-search.ts`; read-only SQLite consumer of the wst NovelScribe reference corpus via `node:sqlite`; FTS5 BM25 → LLM rerank top 5; per ADR-0006; 21 tests)
+- ✅ **Phase 9 — Multilingual (en + zh)** (`extensions/i18n/` module + `prompts/zh/*.md`; localized tool descriptions / prompt snippets / status display / error messages; per ADR-0007; override chain = command flag > chapter frontmatter > settings > auto-detect > fallback; `/novel write --lang=zh`; 27 tests)
 
-> **170/170 tests passing.** See `.planning/STATE.md` for the phase-by-phase decision log and `docs/phase-7/README.md` for the tmux/UI stance.
+> **232/232 tests passing, 82.x% statement coverage.** See `.planning/STATE.md` for the phase-by-phase decision log, `docs/phase-7/README.md` for the tmux/UI stance, `docs/adr/0006-llm-wiki.md` for the wiki design contract, and `docs/adr/0007-multilingual.md` for the i18n design contract.
 
 Track progress in a `STATE.md` once implementation begins.

@@ -30,13 +30,54 @@ describe("run_director tool wrapper", () => {
 			makeFakeCtx(),
 		)) as {
 			content: Array<{ text: string }>
-			details: { intent: string; primary: string; matched_via: string }
+			details: {
+				intent: string
+				primary: string
+				support: readonly string[]
+				matched_via: string
+			}
 		}
 
 		expect(result.details.intent).toBe("write_chapter")
 		expect(result.details.primary).toBe("writer")
+		expect(result.details.support).toContain("wiki_search")
+		expect(result.details.support).toContain("planner")
 		expect(["phrase", "keyword"]).toContain(result.details.matched_via)
 		expect(result.content[0]?.text).toContain("Primary agent: writer")
+	})
+
+	it("plan_chapter dispatch plan surfaces wiki_search in support", async () => {
+		const pi = makeFakePi()
+		registerDirectorTool(pi, ROUTE_PATH)
+		const tool = pi.get("run_director")
+		const result = (await tool.execute(
+			"call-1",
+			{ input: "plan chapter 3" },
+			undefined,
+			undefined,
+			makeFakeCtx(),
+		)) as {
+			details: { intent: string; support: readonly string[] }
+		}
+
+		expect(result.details.intent).toBe("plan_chapter")
+		expect(result.details.support).toContain("wiki_search")
+	})
+
+	it("review_chapter dispatch plan surfaces wiki_search in support", async () => {
+		const pi = makeFakePi()
+		registerDirectorTool(pi, ROUTE_PATH)
+		const tool = pi.get("run_director")
+		const result = (await tool.execute(
+			"call-1",
+			{ input: "review the latest chapter" },
+			undefined,
+			undefined,
+			makeFakeCtx(),
+		)) as { details: { intent: string; support: readonly string[] } }
+
+		expect(result.details.intent).toBe("review_chapter")
+		expect(result.details.support).toContain("wiki_search")
 	})
 
 	it("throws when no route matches and LLM fallback is not wired", async () => {

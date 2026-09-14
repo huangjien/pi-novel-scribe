@@ -5,24 +5,19 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs"
-import { dirname, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import * as yaml from "js-yaml"
 import { Type } from "typebox"
+import {
+	DEFAULT_LANGUAGE,
+	type Language,
+	localizedError,
+	resolveLanguage,
+	toolStrings,
+} from "../i18n/index.ts"
+import { loadAgentPrompt } from "../i18n/prompts.ts"
 import { composeCriticContext } from "../novel/critic-context.ts"
 import { extractYamlBlock } from "../novel/yaml-extract.ts"
-
-const PROMPT_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../../prompts/critic.md")
-
-function loadCriticPromptBody(): string {
-	const raw = readFileSync(PROMPT_PATH, "utf8")
-	const sep = raw.indexOf("\n---")
-	if (sep === -1) return raw
-	const second = raw.indexOf("\n---", sep + 4)
-	if (second === -1) return raw.slice(sep + 4)
-	return raw.slice(second + 5).trim()
-}
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)?([\s\S]*)$/
 
@@ -44,47 +39,36 @@ export interface CriticReview {
 export function registerCriticAgent(pi: ExtensionAPI): void {
 	pi.registerTool({
 		name: "delegate_to_critic",
-		label: "Critic",
-		description:
-			"Review a chapter. Issues are segmented by `category` (story / character / pacing / prose / foreshadowing / continuity-issue / other) with severity (blocker / high / medium / low / praise). Output written to chapter frontmatter `review:` field.",
-		promptSnippet: "Review a chapter and emit categorized issues.",
-		promptGuidelines: [
-			"Use delegate_to_critic when the user asks for review, critique, or feedback on a chapter (route review_chapter).",
-			"Always set chapter_id so the Critic knows which chapter to read.",
-			"Output ONLY a YAML review block — no preamble, no commentary.",
-		],
+		label: toolStrings(DEFAULT_LANGUAGE, "delegate_to_critic").label,
+		description: toolStrings(DEFAULT_LANGUAGE, "delegate_to_critic").description,
+		promptSnippet: toolStrings(DEFAULT_LANGUAGE, "delegate_to_critic").promptSnippet,
+		promptGuidelines: [...toolStrings(DEFAULT_LANGUAGE, "delegate_to_critic").promptGuidelines],
 		parameters: Type.Object({
 			chapter_id: Type.String({ description: "Chapter filename or absolute path." }),
 			rubric: Type.Optional(
 				Type.String({ description: "Optional per-category severity thresholds." }),
 			),
+			language: Type.Optional(
+				Type.Union([Type.Literal("en"), Type.Literal("zh")], {
+					description: "Override the working language for this call.",
+				}),
+			),
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			const p = params as { chapter_id: string; rubric?: string }
+			const p = params as { chapter_id: string; rubric?: string; language?: Language }
 			if (!ctx.model) {
-				throw new Error("delegate_to_critic: no active model in this session.")
+				localizedError(DEFAULT_LANGUAGE, "editor_no_model", "delegate_to_critic")
 			}
 			const ctxData = composeCriticContext({
 				chapterPath: p.chapter_id,
 				cwd: ctx.cwd,
 			})
-			const promptBody = loadCriticPromptBody()
-			const userMessage = `Review request:\n\`\`\`\n${JSON.stringify(
-				{
-					novelRepo: ctxData.novelRepo,
-					chapterPath: ctxData.chapterPath,
-					chapterNumber: ctxData.chapterNumber,
-					wordCount: ctxData.wordCount,
-					plan: ctxData.plan,
-					pov: ctxData.pov,
-					characterProfile: ctxData.characterProfile,
-					activeStoryLines: ctxData.activeStoryLines,
-					storyLineIndex: ctxData.storyLineIndex,
-					prose: ctxData.prose,
-				},
-				null,
-				2,
-			)}\n\`\`\`\n${p.rubric ? `\nRubric: ${p.rubric}\n` : ""}\nReturn ONLY a YAML review block between \`\`\`yaml fences.`
+			const lang = resolveLanguage(ctx, {
+				flag: p.language,
+				chapterPath: p.chapter_id,
+			})
+			const promptBody = loadAgentPrompt("critic", lang)
+			const userMessage = buildCriticUserMessage(ctxData, p.rubric, lang)
 
 			const result = await ctx.modelRegistry.complete(
 				ctx.model,
@@ -98,40 +82,19 @@ export function registerCriticAgent(pi: ExtensionAPI): void {
 				.filter((b: { type: string }) => b.type === "text")
 				.map((b: { type: string; text?: string }) => b.text ?? "")
 				.join("")
-			const yamlBody = extractYamlBlock(text)
-			if (yamlBody === null) {
-				throw new Error("delegate_to_critic: LLM output had no ```yaml fenced review block.")
-			}
-			let parsedReview: unknown
-			try {
-				parsedReview = yaml.load(yamlBody)
-			} catch (err) {
-				throw new Error(`delegate_to_critic: YAML parse error: ${(err as Error).message}`)
-			}
-			if (typeof parsedReview !== "object" || parsedReview === null) {
-				throw new Error("delegate_to_critic: parsed YAML is not an object.")
-			}
-			const review: CriticReview = {
-				issues: extractIssues((parsedReview as { issues?: unknown }).issues),
-				summary:
-					typeof (parsedReview as { summary?: unknown }).summary === "string"
-						? (parsedReview as { summary: string }).summary
-						: "",
-				atChapter: ctxData.chapterNumber,
-				reviewedAt: new Date().toISOString(),
-			}
+			const review = parseCriticYamlResponse(text, lang, p.chapter_id)
 			const { frontmatter: existing, body } = readChapter(ctxData.chapterPath)
 			const updated: Record<string, unknown> = { ...existing, review }
 			const rebuilt = `${serializeFrontmatter(updated)}\n\n${body}`
 			writeFileSync(ctxData.chapterPath, rebuilt, "utf8")
+			const summaryTxt = review.summary || (lang === "zh" ? "（无）" : "(none)")
+			const msg =
+				lang === "zh"
+					? `已审阅第 ${ctxData.chapterNumber ?? "?"} 章：${review.issues.length} 个问题。摘要：${summaryTxt}`
+					: `Reviewed chapter ${ctxData.chapterNumber ?? "?"}: ${review.issues.length} issue(s). Summary: ${summaryTxt}`
 			return {
-				content: [
-					{
-						type: "text",
-						text: `Reviewed chapter ${ctxData.chapterNumber ?? "?"}: ${review.issues.length} issue(s). Summary: ${review.summary || "(none)"}`,
-					},
-				],
-				details: { chapterPath: ctxData.chapterPath, review },
+				content: [{ type: "text", text: msg }],
+				details: { chapterPath: ctxData.chapterPath, review, language: lang },
 			}
 		},
 	})
@@ -181,6 +144,64 @@ function readChapter(path: string): {
 		return { frontmatter: {}, body: m[2] }
 	}
 	return { frontmatter: parsed as Record<string, unknown>, body: m[2] }
+}
+
+interface CriticContextData {
+	readonly novelRepo: string
+	readonly chapterPath: string
+	readonly chapterNumber: number | null
+	readonly wordCount: number
+	readonly plan: unknown
+	readonly pov: string | null
+	readonly characterProfile: string | null
+	readonly activeStoryLines: readonly unknown[]
+	readonly storyLineIndex: readonly unknown[]
+	readonly prose: string
+}
+
+function buildCriticUserMessage(
+	ctxData: CriticContextData,
+	rubric: string | undefined,
+	lang: Language,
+): string {
+	const closing =
+		lang === "zh"
+			? "请仅以 ```yaml 围栏的 YAML 审阅块返回。"
+			: "Return ONLY a YAML review block between ```yaml fences."
+	return [
+		`Working language: ${lang}`,
+		"Review request:",
+		"```",
+		JSON.stringify(ctxData, null, 2),
+		"```",
+		rubric ? `\nRubric: ${rubric}\n` : "",
+		closing,
+	].join("\n")
+}
+
+function parseCriticYamlResponse(text: string, lang: Language, chapterId: string): CriticReview {
+	const yamlBody = extractYamlBlock(text)
+	if (yamlBody === null) {
+		localizedError(lang, "editor_no_yaml_review", "delegate_to_critic")
+	}
+	let parsedReview: unknown
+	try {
+		parsedReview = yaml.load(yamlBody)
+	} catch (err) {
+		throw new Error(
+			`delegate_to_critic (${chapterId}): YAML parse error: ${(err as Error).message}`,
+		)
+	}
+	if (typeof parsedReview !== "object" || parsedReview === null) {
+		throw new Error("delegate_to_critic: parsed YAML is not an object.")
+	}
+	const obj = parsedReview as { issues?: unknown; summary?: unknown }
+	return {
+		issues: extractIssues(obj.issues),
+		summary: typeof obj.summary === "string" ? obj.summary : "",
+		atChapter: null,
+		reviewedAt: new Date().toISOString(),
+	}
 }
 
 function serializeFrontmatter(fm: Record<string, unknown>): string {

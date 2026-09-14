@@ -26,6 +26,7 @@ import { registerPlannerAgent } from "./agents/planner.ts"
 import { registerWriterAgent } from "./agents/writer.ts"
 import { handleNovelWrite } from "./commands/novel-write.ts"
 import { openApprovalGate } from "./editor/gate.ts"
+import { helpText, resolveLanguage } from "./i18n/index.ts"
 import { listDraftCanonChanges, proposeCanonChange } from "./novel/canon.ts"
 import { applyApprovalFromGate } from "./novel/canon-approval.ts"
 import { registerDirectorTool } from "./orchestrator/director.ts"
@@ -35,21 +36,6 @@ import { registerStatusWidget } from "./tmux/widget.ts"
 import { registerWikiSearchTool } from "./tools/wiki-search.ts"
 
 const ROUTE_PATH = "config/route.yaml"
-
-const HELP_TEXT =
-	"Available subcommands:\n" +
-	"  /novel write [chapter] — open the chapter in your editor; mark drafted on save (Phase 0.5 substrate).\n" +
-	"  /novel help             — show this message.\n" +
-	"  /novel <anything>       — LLM tool loop (run_director → delegate_to_<primary>).\n" +
-	"\nBuilt-in agent tools (Phase 3+: Writer wired, Continuity read-side, others stubbed):\n" +
-	"  delegate_to_writer       — drafts prose from scene context (Q7).\n" +
-	"  delegate_to_planner      — plan-time intent stub.\n" +
-	"  delegate_to_critic       — review intent stub.\n" +
-	"  delegate_to_continuity   — canon consistency (Phase 4: read-side).\n" +
-	"  run_director             — route-table router (ADR-0004).\n" +
-	"  canon_propose            — propose a Canon Change (Phase 5).\n" +
-	"  canon_approve            — editor-as-gate for a Canon Change draft (Phase 6.6).\n" +
-	"  wiki_search              — LLM wiki: pick top-N reference templates (Phase 8).\n"
 
 export default function (pi: ExtensionAPI): void {
 	registerDirectorTool(pi, ROUTE_PATH)
@@ -164,16 +150,17 @@ export default function (pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			const trimmed = args.trim()
 			const subcommand = trimmed.split(/\s+/)[0] ?? ""
+			const langFlag = parseLangFlag(trimmed)
 
 			if (subcommand === "" || subcommand === "help") {
-				ctx.ui.notify(HELP_TEXT, "info")
+				ctx.ui.notify(helpText(langFlag ?? resolveLanguage(ctx, { cwd: ctx.cwd })), "info")
 				return
 			}
 
 			// ADR-0004 rule `explicit_over_implicit`: explicit /novel write
 			// bypasses the LLM tool loop and runs the Phase 0.5 substrate.
 			if (subcommand === "write") {
-				await handleNovelWrite(ctx)
+				await handleNovelWrite(ctx, undefined, { language: langFlag })
 				return
 			}
 
@@ -223,4 +210,12 @@ export default function (pi: ExtensionAPI): void {
 
 	registerStatusWidget(pi)
 	registerWikiSearchTool(pi)
+}
+
+function parseLangFlag(args: string): "en" | "zh" | undefined {
+	const match = /--lang=([a-z]{2})/.exec(args)
+	if (!match?.[1]) return undefined
+	const value = match[1]
+	if (value === "en" || value === "zh") return value
+	return undefined
 }

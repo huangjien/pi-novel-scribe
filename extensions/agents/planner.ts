@@ -6,24 +6,20 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs"
-import { dirname, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import * as yaml from "js-yaml"
 import { Type } from "typebox"
+import {
+	DEFAULT_LANGUAGE,
+	type Language,
+	localizedError,
+	resolveLanguage,
+	statusDisplay,
+	toolStrings,
+} from "../i18n/index.ts"
+import { loadAgentPrompt } from "../i18n/prompts.ts"
 import { composePlanRequest } from "../novel/plan-context.ts"
 import { applyStatus } from "../workflow/status.ts"
-
-const PROMPT_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../../prompts/planner.md")
-
-function loadPlannerPromptBody(): string {
-	const raw = readFileSync(PROMPT_PATH, "utf8")
-	const sep = raw.indexOf("\n---")
-	if (sep === -1) return raw
-	const second = raw.indexOf("\n---", sep + 4)
-	if (second === -1) return raw.slice(sep + 4)
-	return raw.slice(second + 5).trim()
-}
 
 const YAML_BLOCK_RE = /```\s*(?:yaml|yml)\s*\n([\s\S]*?)```/i
 
@@ -68,25 +64,25 @@ export function extractYamlBlock(llmOutput: string): string | null {
 export function registerPlannerAgent(pi: ExtensionAPI): void {
 	pi.registerTool({
 		name: "delegate_to_planner",
-		label: "Planner",
-		description:
-			"Generate a chapter plan. Reads novel state, calls the LLM, parses the YAML plan, writes it back to chapter frontmatter, transitions status → planned.",
-		promptSnippet: "Generate a chapter plan from novel state.",
-		promptGuidelines: [
-			"Use delegate_to_planner when the user asks to plan a chapter (route plan_chapter).",
-			"Output ONLY a YAML plan block — no preamble, no commentary.",
-			"After the plan is written, the user reviews it; only then does /novel write invoke delegate_to_writer.",
-		],
+		label: toolStrings(DEFAULT_LANGUAGE, "delegate_to_planner").label,
+		description: toolStrings(DEFAULT_LANGUAGE, "delegate_to_planner").description,
+		promptSnippet: toolStrings(DEFAULT_LANGUAGE, "delegate_to_planner").promptSnippet,
+		promptGuidelines: [...toolStrings(DEFAULT_LANGUAGE, "delegate_to_planner").promptGuidelines],
 		parameters: Type.Object({
 			chapter_id: Type.String({
 				description: "Chapter filename (e.g. 0005.md) or absolute path.",
 			}),
 			scope: Type.Optional(Type.String({ description: "User note: POV hint, focus, etc." })),
+			language: Type.Optional(
+				Type.Union([Type.Literal("en"), Type.Literal("zh")], {
+					description: "Override the working language for this call.",
+				}),
+			),
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			const p = params as { chapter_id: string; scope?: string }
+			const p = params as { chapter_id: string; scope?: string; language?: Language }
 			if (!ctx.model) {
-				throw new Error("delegate_to_planner: no active model in this session.")
+				localizedError(DEFAULT_LANGUAGE, "editor_no_model", "delegate_to_planner")
 			}
 
 			const request = composePlanRequest({
@@ -94,21 +90,12 @@ export function registerPlannerAgent(pi: ExtensionAPI): void {
 				cwd: ctx.cwd,
 			})
 
-			const promptBody = loadPlannerPromptBody()
-			const userMessage = `Plan request:\n\`\`\`\n${JSON.stringify(
-				{
-					novelRepo: request.novelRepo,
-					chapterPath: request.chapterPath,
-					chapterNumber: request.chapterNumber,
-					existingPlan: request.existingPlan,
-					characterProfiles: request.characterProfiles,
-					activeStoryLines: request.activeStoryLines,
-					lastProseTail: request.lastProseTail,
-					approvedChapterCount: request.approvedChapterCount,
-				},
-				null,
-				2,
-			)}\n\`\`\`\n${p.scope ? `\nUser note: ${p.scope}\n` : ""}\nReturn ONLY a YAML plan block between \`\`\`yaml fences.`
+			const lang = resolveLanguage(ctx, {
+				flag: p.language,
+				chapterPath: p.chapter_id,
+			})
+			const promptBody = loadAgentPrompt("planner", lang)
+			const userMessage = buildPlannerUserMessage(request, p.scope, lang)
 
 			const result = await ctx.modelRegistry.complete(
 				ctx.model,
@@ -119,13 +106,9 @@ export function registerPlannerAgent(pi: ExtensionAPI): void {
 				{},
 			)
 
-			const text = result.content
-				.filter((b: { type: string }) => b.type === "text")
-				.map((b: { type: string; text?: string }) => b.text ?? "")
-				.join("")
-			const yamlBody = extractYamlBlock(text)
+			const yamlBody = extractYamlBlock(extractTextFromResult(result))
 			if (yamlBody === null) {
-				throw new Error("delegate_to_planner: LLM output had no ```yaml fenced plan block.")
+				localizedError(lang, "editor_no_yaml_plan", "delegate_to_planner")
 			}
 
 			let parsedPlan: unknown
@@ -149,14 +132,14 @@ export function registerPlannerAgent(pi: ExtensionAPI): void {
 			writeFileSync(request.chapterPath, rebuilt, "utf8")
 			applyStatus(request.chapterPath, "planned")
 
+			const statusLabel = statusDisplay(lang, "planned")
+			const planMsg =
+				lang === "zh"
+					? `已为第 ${request.chapterNumber ?? "?"} 章（${request.chapterPath}）写入计划。状态 → ${statusLabel}。`
+					: `Plan written for chapter ${request.chapterNumber ?? "?"} at ${request.chapterPath}. Status → ${statusLabel}.`
 			return {
-				content: [
-					{
-						type: "text",
-						text: `Plan written for chapter ${request.chapterNumber ?? "?"} at ${request.chapterPath}. Status → planned.`,
-					},
-				],
-				details: { chapterPath: request.chapterPath, plan: parsedPlan },
+				content: [{ type: "text", text: planMsg }],
+				details: { chapterPath: request.chapterPath, plan: parsedPlan, language: lang },
 			}
 		},
 	})
@@ -167,4 +150,47 @@ function readChapter(path: string): {
 	body: string
 } {
 	return parseYamlFrontmatter(readFileSync(path, "utf8"))
+}
+
+function buildPlannerUserMessage(
+	request: ReturnType<typeof composePlanRequest>,
+	scope: string | undefined,
+	lang: Language,
+): string {
+	const payload = JSON.stringify(
+		{
+			novelRepo: request.novelRepo,
+			chapterPath: request.chapterPath,
+			chapterNumber: request.chapterNumber,
+			existingPlan: request.existingPlan,
+			characterProfiles: request.characterProfiles,
+			activeStoryLines: request.activeStoryLines,
+			lastProseTail: request.lastProseTail,
+			approvedChapterCount: request.approvedChapterCount,
+		},
+		null,
+		2,
+	)
+	const closing =
+		lang === "zh"
+			? "请仅以 ```yaml 围栏的 YAML 计划块返回。"
+			: "Return ONLY a YAML plan block between ```yaml fences."
+	return [
+		`Working language: ${lang}`,
+		"Plan request:",
+		"```",
+		payload,
+		"```",
+		scope ? `\nUser note: ${scope}\n` : "",
+		closing,
+	].join("\n")
+}
+
+function extractTextFromResult(result: {
+	content: Array<{ type: string; text?: string }>
+}): string {
+	return result.content
+		.filter((b) => b.type === "text")
+		.map((b) => b.text ?? "")
+		.join("")
 }

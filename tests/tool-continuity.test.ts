@@ -22,17 +22,18 @@ afterEach(() => {
 })
 
 function setupNovelRepo(): void {
-	// chapters/0001.md + 0002.md with @scene markers
+	// chapters/0001.md + 0002.md with @scene markers; language=en so the
+	// language-filter refresh path picks them up.
 	const chaptersDir = join(tmpDir, "chapters")
 	mkdirSync(chaptersDir, { recursive: true })
 	writeFileSync(
 		join(chaptersDir, "0001.md"),
-		`---\nchapter: 1\nstatus: approved\n---\n\n@scene id=a pov=sara\n\nSara learns the truth.`,
+		`---\nchapter: 1\nstatus: approved\nlanguage: en\n---\n\n@scene id=a pov=sara\n\nSara learns the truth.`,
 		"utf8",
 	)
 	writeFileSync(
 		join(chaptersDir, "0002.md"),
-		`---\nchapter: 2\nstatus: approved\n---\n\n@scene id=b pov=sara\n\nSara acts on it.`,
+		`---\nchapter: 2\nstatus: approved\nlanguage: en\n---\n\n@scene id=b pov=sara\n\nSara acts on it.`,
 		"utf8",
 	)
 }

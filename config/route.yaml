@@ -47,6 +47,13 @@ subagents:
   - id: continuity
     role: Canon-consistency, character-beliefs derivation, fact extraction
     tier: expensive
+  - id: wiki_search
+    role: Reference-corpus lookup (FTS5 + LLM rerank top-5 templates from wst)
+    tier: cheap
+    note: >
+      Bare name in `support` lists — the Director instructs the LLM to
+      invoke the `wiki_search` tool directly (not `delegate_to_wiki_search`,
+      since no agent owns it). Per ADR-0006.
 
 # ============================================================================
 # Routes — match user input to a workflow
@@ -67,7 +74,7 @@ routes:
         - continue drafting
     agents:
       primary: writer
-      support: [planner, continuity]   # planner → unapproved plan; continuity → belief refresh
+      support: [planner, continuity, wiki_search]   # wiki → reference templates (consumed by Writer before drafting)
     requires_state: ["chapters.next_unapproved"]   # there must be a chapter to write
     transitions_status: [planned → writing → drafted → human_editing]
     priority: 100      # this is the headline workflow
@@ -84,7 +91,7 @@ routes:
         - design scenes
     agents:
       primary: planner
-      support: []
+      support: [wiki_search]    # fetch reference templates before drafting the plan
     requires_state: ["chapters.planned_or_next"]
     transitions_status: [planned → planned]   # no status change; planner writes plan
     priority: 95
@@ -101,7 +108,7 @@ routes:
         - what do you think of chapter
     agents:
       primary: critic
-      support: [continuity]    # parallel: fact-check
+      support: [continuity, wiki_search]    # wiki → prior-chapter templates for comparison; continuity → fact-check
     requires_state: ["chapters.drafted_or_approved"]
     transitions_status: []    # review does not auto-advance; author decides
     priority: 90
@@ -118,7 +125,7 @@ routes:
         - apply review
     agents:
       primary: writer
-      support: [critic, continuity]   # writer drafts, critic + continuity check diff
+      support: [critic, continuity, wiki_search]   # writer drafts; critic + continuity check diff; wiki → reference templates
     requires_state: ["chapters.reviewed"]
     transitions_status: [drafted → drafted]
     priority: 88

@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from "node:path"
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent"
 import { type EditorInjection, openInEditor } from "../editor/open.ts"
+import { DEFAULT_LANGUAGE, helpText, type Language, resolveLanguage } from "../i18n/index.ts"
 import { resolveNovelRepo } from "../state/path-resolver.ts"
 import { applyStatus, getStatus, parseFrontmatter } from "../workflow/status.ts"
 
@@ -82,20 +83,38 @@ function extractChapterNumber(frontmatter: { chapter?: unknown }, filename: stri
 
 export async function handleNovelWrite(
 	ctx: ExtensionCommandContext,
-	injection?: EditorInjection,
+	injection: EditorInjection | undefined,
+	options: { language?: Language } = {},
 ): Promise<void> {
+	const lang = resolveLanguage(ctx, {
+		flag: options.language ?? DEFAULT_LANGUAGE,
+		cwd: ctx.cwd,
+	})
 	const novelRepo = resolveNovelRepo(ctx.cwd)
-	ctx.ui.notify(`Novel repo: ${novelRepo.path} (source: ${novelRepo.source})`, "info")
+	ctx.ui.notify(
+		lang === "zh"
+			? `小说仓库：${novelRepo.path}（来源：${novelRepo.source}）`
+			: `Novel repo: ${novelRepo.path} (source: ${novelRepo.source})`,
+		"info",
+	)
 
 	const next = findNextChapter(novelRepo.path)
-	const label = next.created ? "Created new chapter" : "Opening chapter"
+	const label = next.created
+		? lang === "zh"
+			? "已新建章节"
+			: "Created new chapter"
+		: lang === "zh"
+			? "正在打开章节"
+			: "Opening chapter"
 	ctx.ui.notify(`${label} ${next.chapterNumber}: ${next.chapterPath}`, "info")
 
 	const result = await openInEditor(next.chapterPath, injection)
 
 	if (!result.saved) {
 		ctx.ui.notify(
-			`Editor exited without saving — chapter ${next.chapterNumber} not marked drafted.`,
+			lang === "zh"
+				? `编辑器未保存即退出——第 ${next.chapterNumber} 章未标记为 drafted。`
+				: `Editor exited without saving — chapter ${next.chapterNumber} not marked drafted.`,
 			"warning",
 		)
 		return
@@ -103,7 +122,11 @@ export async function handleNovelWrite(
 
 	applyStatus(next.chapterPath, "drafted")
 	ctx.ui.notify(
-		`Saved. Chapter ${next.chapterNumber} marked status: drafted (took ${result.durationMs}ms).`,
+		lang === "zh"
+			? `已保存。第 ${next.chapterNumber} 章状态标记为 drafted（耗时 ${result.durationMs}ms）。`
+			: `Saved. Chapter ${next.chapterNumber} marked status: drafted (took ${result.durationMs}ms).`,
 		"info",
 	)
 }
+
+export { helpText }

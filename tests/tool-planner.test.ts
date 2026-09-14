@@ -64,7 +64,7 @@ describe("delegate_to_planner tool wrapper", () => {
 			pov: "sara",
 			beats: ["setup", "escalation"],
 		})
-		expect(result.content[0]?.text).toContain("planned")
+		expect(result.content[0]?.text).toContain("Planned")
 
 		const updated = readFileSync(chapterPath, "utf8")
 		expect(updated).toContain("plan:")

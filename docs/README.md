@@ -25,8 +25,9 @@ ADR directory: [`adr/`](./adr/)
 | [0004](./adr/0004-director-route-yaml-router.md) | Director as `route.yaml` router with LLM fallback | Q13 + Q16 |
 | [0005](./adr/0005-subagents-earned-not-declared.md) | Subagents earned, not declared | Q11 |
 | [0006](./adr/0006-llm-wiki.md) | LLM Wiki — cross-project SQLite reference corpus | Q17 + Q18 |
+| [0007](./adr/0007-multilingual.md) | Multilingual support (en + zh) | Q19 + Q20 |
 
-Six issued, zero open. Every locked Q-decision traces to an ADR.
+Seven issued, zero open. Every locked Q-decision traces to an ADR.
 
 ## Per-phase
 

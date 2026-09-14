@@ -11,37 +11,28 @@
  *   - Multi-chapter scoped writing. Phase 3 is single-chapter.
  */
 
-import { readFileSync, writeFileSync } from "node:fs"
-import { dirname, isAbsolute, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { writeFileSync } from "node:fs"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import {
+	DEFAULT_LANGUAGE,
+	type Language,
+	localizedError,
+	resolveLanguage,
+	statusDisplay,
+	toolStrings,
+} from "../i18n/index.ts"
+import { loadAgentPrompt } from "../i18n/prompts.ts"
 import { composeSceneContext, isDraftable } from "../novel/context.ts"
 import { applyStatus } from "../workflow/status.ts"
-
-const PROMPT_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../../prompts/writer.md")
-
-function loadWriterPromptBody(): string {
-	const raw = readFileSync(PROMPT_PATH, "utf8")
-	const sep = raw.indexOf("\n---")
-	if (sep === -1) return raw
-	const second = raw.indexOf("\n---", sep + 4)
-	if (second === -1) return raw.slice(sep + 4)
-	return raw.slice(second + 5).trim()
-}
 
 export function registerWriterAgent(pi: ExtensionAPI): void {
 	pi.registerTool({
 		name: "delegate_to_writer",
-		label: "Writer",
-		description:
-			"Draft prose for a chapter. Reads scene context (Q7) deterministically, calls the LLM with the Writer prompt, writes prose into the chapter file, and transitions status → human_editing.",
-		promptSnippet: "Generate chapter prose from the active scene context.",
-		promptGuidelines: [
-			"Use delegate_to_writer only when the chapter has an approved or provisional plan.",
-			"Always set chapter_id (filename or absolute path) so the Writer knows what to draft.",
-			"After drafting, the canonical workflow continues to Continuity validation (Phase 5+).",
-		],
+		label: toolStrings(DEFAULT_LANGUAGE, "delegate_to_writer").label,
+		description: toolStrings(DEFAULT_LANGUAGE, "delegate_to_writer").description,
+		promptSnippet: toolStrings(DEFAULT_LANGUAGE, "delegate_to_writer").promptSnippet,
+		promptGuidelines: [...toolStrings(DEFAULT_LANGUAGE, "delegate_to_writer").promptGuidelines],
 		parameters: Type.Object({
 			chapter_id: Type.String({
 				description:
@@ -50,12 +41,18 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 			input: Type.Optional(
 				Type.String({ description: "Optional user note (POV hint, scene focus, etc.)." }),
 			),
+			language: Type.Optional(
+				Type.Union([Type.Literal("en"), Type.Literal("zh")], {
+					description:
+						"Override the working language for this call. Falls back to chapter frontmatter / settings / auto-detect.",
+				}),
+			),
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const p = params as { chapter_id: string; input?: string }
+			const p = params as { chapter_id: string; input?: string; language?: Language }
 			const chapterArg = p.chapter_id
 			if (!ctx.model) {
-				throw new Error("delegate_to_writer: no active model in this session.")
+				localizedError(DEFAULT_LANGUAGE, "editor_no_model", "delegate_to_writer")
 			}
 
 			const scene = composeSceneContext({
@@ -64,13 +61,19 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 			})
 
 			if (!isDraftable(scene.status)) {
-				throw new Error(
-					`delegate_to_writer: chapter is ${scene.status} — refusing to overwrite approved canon.`,
-				)
+				localizedError(DEFAULT_LANGUAGE, "editor_chapter_approved", [
+					"delegate_to_writer",
+					scene.status ?? "(unknown)",
+				])
 			}
 
-			const promptBody = loadWriterPromptBody()
+			const lang = resolveLanguage(ctx, {
+				flag: p.language,
+				chapterPath: chapterArg,
+			})
+			const promptBody = loadAgentPrompt("writer", lang)
 			const userMessage = [
+				`Working language: ${lang}`,
 				"Scene context (deterministic, Q7):",
 				"```",
 				JSON.stringify(
@@ -86,7 +89,9 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 				),
 				"```",
 				p.input ? `\nUser note: ${p.input}` : "",
-				"\nWrite the chapter prose now. Use @scene markers to delineate scenes. Output ONLY prose.",
+				lang === "zh"
+					? "\n请用中文撰写本章节正文，使用 @scene 标记划分场景。仅输出正文。"
+					: "\nWrite the chapter prose now. Use @scene markers to delineate scenes. Output ONLY prose.",
 			].join("\n")
 
 			const result = await ctx.modelRegistry.complete(
@@ -103,24 +108,29 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 				.map((block: { type: string; text?: string }) => block.text ?? "")
 			const finalProse = proseParts.join("").trim()
 			if (finalProse.length === 0) {
-				throw new Error("delegate_to_writer: LLM produced no prose.")
+				localizedError(lang, "editor_no_prose", "delegate_to_writer")
 			}
 
 			writeFileSync(scene.chapterPath, finalProse, "utf8")
 			applyStatus(scene.chapterPath, "human_editing")
 
 			const wordCount = finalProse.split(/\s+/).length
+			const statusLabel = statusDisplay(lang, "human_editing")
 			return {
 				content: [
 					{
 						type: "text",
-						text: `Drafted ${wordCount} words into ${scene.chapterPath}. Status → human_editing.`,
+						text:
+							lang === "zh"
+								? `已为 ${scene.chapterPath} 起草 ${wordCount} 字。状态 → ${statusLabel}。`
+								: `Drafted ${wordCount} words into ${scene.chapterPath}. Status → ${statusLabel}.`,
 					},
 				],
 				details: {
 					chapterPath: scene.chapterPath,
 					wordCount,
 					pov: scene.pov,
+					language: lang,
 				},
 			}
 		},
@@ -129,7 +139,3 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 
 // Re-export so loader paths work even though we already use registerWriterAgent above.
 export { isDraftable }
-
-// (Internal — kept to avoid unused-import warnings if writer.ts is imported standalone)
-void join
-void isAbsolute

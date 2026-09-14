@@ -12,6 +12,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import { DEFAULT_LANGUAGE, type Language, resolveLanguage, toolStrings } from "../i18n/index.ts"
 import {
 	deriveCharacterKnowledgeAt,
 	deriveReaderKnowledgeAt,
@@ -25,14 +26,10 @@ type Mode = "inspect" | "investigate" | "refresh"
 export function registerContinuityAgent(pi: ExtensionAPI): void {
 	pi.registerTool({
 		name: "delegate_to_continuity",
-		label: "Continuity",
-		description:
-			"Canonical consistency queries. Read-only: inspect_novel_state (what does X know), investigate_continuity_break (find divergence), refresh (Phase 5+: writes back beliefs).",
-		promptSnippet: "Read novel state, derive beliefs, find contradictions.",
-		promptGuidelines: [
-			"Use delegate_to_continuity for inspect_novel_state and investigate_continuity_break routes.",
-			"Continuity is read-only in Phase 4. Mutation of canonical state goes through canon_propose (Phase 5).",
-		],
+		label: toolStrings(DEFAULT_LANGUAGE, "delegate_to_continuity").label,
+		description: toolStrings(DEFAULT_LANGUAGE, "delegate_to_continuity").description,
+		promptSnippet: toolStrings(DEFAULT_LANGUAGE, "delegate_to_continuity").promptSnippet,
+		promptGuidelines: [...toolStrings(DEFAULT_LANGUAGE, "delegate_to_continuity").promptGuidelines],
 		parameters: Type.Object({
 			query: Type.String({ description: "What to check or inspect." }),
 			mode: Type.Optional(
@@ -44,6 +41,11 @@ export function registerContinuityAgent(pi: ExtensionAPI): void {
 			chapter_index: Type.Optional(
 				Type.Number({ description: "Limit derivation to chapters ≤ N. Defaults to all approved." }),
 			),
+			language: Type.Optional(
+				Type.Union([Type.Literal("en"), Type.Literal("zh")], {
+					description: "Override the working language for this call.",
+				}),
+			),
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			const p = params as {
@@ -51,8 +53,10 @@ export function registerContinuityAgent(pi: ExtensionAPI): void {
 				mode?: Mode
 				character?: string
 				chapter_index?: number
+				language?: Language
 			}
 			const novelRepo = resolveNovelRepo(ctx.cwd).path
+			const lang = resolveLanguage(ctx, { flag: p.language, cwd: ctx.cwd })
 			const mode = p.mode ?? inferMode(p.query)
 			const chapterIndex = p.chapter_index ?? Number.POSITIVE_INFINITY
 			const character = p.character ?? extractCharacterId(p.query)
@@ -60,15 +64,23 @@ export function registerContinuityAgent(pi: ExtensionAPI): void {
 			let summary: string
 			switch (mode) {
 				case "inspect":
-					summary = handleInspect(novelRepo, character, chapterIndex, p.query)
+					summary = handleInspect(novelRepo, character, chapterIndex, p.query, lang)
 					break
 				case "investigate":
-					summary = handleInvestigate(novelRepo, chapterIndex)
+					summary = handleInvestigate(novelRepo, chapterIndex, lang)
 					break
 				case "refresh": {
 					const { refreshCharacterBeliefs } = await import("../novel/continuity-refresh.ts")
-					const result = refreshCharacterBeliefs(novelRepo)
-					summary = `Refreshed character beliefs: ${result.derivedCharacters.length} character(s), ${result.approvedChapterCount} approved chapter(s) processed. Wrote: ${result.outputPath}.`
+					const result = refreshCharacterBeliefs(novelRepo, { language: lang })
+					const filterNote = result.languageFilter
+						? lang === "zh"
+							? `（仅含 ${result.languageFilter} 章节：匹配 ${result.chapterStats.matched} 章，跳过 ${result.chapterStats.skipped} 章）`
+							: ` (filtered to ${result.languageFilter}: matched ${result.chapterStats.matched} chapter(s), skipped ${result.chapterStats.skipped})`
+						: ""
+					summary =
+						lang === "zh"
+							? `已刷新人物信念：${result.derivedCharacters.length} 个人物，匹配 ${result.chapterStats.matched} 个已批准章节${filterNote}。已写入：${result.outputPath}。`
+							: `Refreshed character beliefs: ${result.derivedCharacters.length} character(s), matched ${result.chapterStats.matched} approved chapter(s)${filterNote}. Wrote: ${result.outputPath}.`
 					break
 				}
 			}
@@ -79,6 +91,7 @@ export function registerContinuityAgent(pi: ExtensionAPI): void {
 					mode,
 					character,
 					chapterIndex,
+					language: lang,
 				},
 			}
 		},
@@ -106,25 +119,39 @@ function handleInspect(
 	character: string | undefined,
 	chapterIndex: number,
 	_query: string,
+	lang: Language,
 ): string {
 	const approved = listApprovedChapters(novelRepo)
 	if (approved.length === 0) {
-		return `No approved chapters found in ${novelRepo}.`
+		return lang === "zh"
+			? `在 ${novelRepo} 中未找到已批准章节。`
+			: `No approved chapters found in ${novelRepo}.`
 	}
 	if (character) {
 		const knowledge = deriveCharacterKnowledgeAt(novelRepo, chapterIndex, character)
-		return `${character} has witnessed ${knowledge.length} scene-fact(s) through chapter ${Number.isFinite(chapterIndex) ? chapterIndex : "?"}: ${knowledge.join(", ") || "(none)"}.`
+		const chStr = Number.isFinite(chapterIndex) ? String(chapterIndex) : "?"
+		return lang === "zh"
+			? `${character} 通过前 ${chStr} 章见证了 ${knowledge.length} 个场景事实：${knowledge.join("、") || "（无）"}。`
+			: `${character} has witnessed ${knowledge.length} scene-fact(s) through chapter ${chStr}: ${knowledge.join(", ") || "(none)"}.`
 	}
 	const reader = deriveReaderKnowledgeAt(novelRepo, chapterIndex)
-	return `Reader knows ${reader.length} scene-fact(s) across ${approved.length} approved chapters: ${reader.join(", ") || "(none)"}.`
+	return lang === "zh"
+		? `读者通过 ${approved.length} 个已批准章节得知 ${reader.length} 个场景事实：${reader.join("、") || "（无）"}。`
+		: `Reader knows ${reader.length} scene-fact(s) across ${approved.length} approved chapters: ${reader.join(", ") || "(none)"}.`
 }
 
-function handleInvestigate(novelRepo: string, chapterIndex: number): string {
+function handleInvestigate(novelRepo: string, chapterIndex: number, lang: Language): string {
 	const divergences = findDivergences(novelRepo, chapterIndex)
-	if (divergences.length === 0)
-		return "No divergences detected between authored overrides and derived character knowledge."
+	if (divergences.length === 0) {
+		const scope = Number.isFinite(chapterIndex) ? `（至第 ${chapterIndex} 章）` : ""
+		return lang === "zh"
+			? `在已批准章节${scope}中未检测到矛盾。`
+			: `No divergences detected between authored overrides and derived character knowledge${Number.isFinite(chapterIndex) ? ` through chapter ${chapterIndex}` : ""}.`
+	}
 	const lines = divergences.map(
 		(d) => `- [${d.type}] ${d.character}: "${d.belief}" (at chapter ${d.at_chapter})`,
 	)
-	return `Found ${divergences.length} divergence(s):\n${lines.join("\n")}`
+	return lang === "zh"
+		? `发现 ${divergences.length} 处矛盾：\n${lines.join("\n")}`
+		: `Found ${divergences.length} divergence(s):\n${lines.join("\n")}`
 }

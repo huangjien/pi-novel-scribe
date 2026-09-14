@@ -32,6 +32,8 @@ export interface ChapterFrontmatter {
 	readonly status?: WorkflowStatus
 	readonly title?: string
 	readonly plan?: string
+	/** Per-chapter language override (ADR-0007). */
+	readonly language?: string
 	readonly [key: string]: unknown
 }
 

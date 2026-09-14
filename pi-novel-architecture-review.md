@@ -1,15 +1,17 @@
 # Pi Novel Extension — Architecture & Implementation Plan
 
 **Status:** Design Review v0.4 (Decisions Locked Q1–Q16, 2026-09-13)
-**Implementation:** v0.1 milestone complete — all 7 phases shipped, 149/149 tests passing.  
-**Target:** Pi Extension  
-**Domain:** Long-form novel writing  
+**Implementation:** v0.1 milestone complete — all 8 phases shipped (Phase 0–8), **205/205 tests passing, 82.64% statement coverage**.
+**Last updated:** 2026-09-14
+**Target:** Pi Extension
+**Domain:** Long-form novel writing
 **Primary principle:** Pi is the runtime; the extension provides novel-specific orchestration. The author remains the final authority on canon.
 
 > **Companion docs** (added in v0.4, all decisions live here):
-> - [CONTEXT.md](../CONTEXT.md) — canonical glossary of 15 locked terms
-> - [STATE.md](../.planning/STATE.md) — milestone + phase tracker
+> - [CONTEXT.md](../CONTEXT.md) — canonical glossary of 16 locked terms
+> - [STATE.md](../.planning/STATE.md) — milestone + phase tracker (v0.1 complete)
 > - [AGENTS.md](../AGENTS.md) — project guide for agents (Tool / workflow contracts)
+> - [docs/adr/](../docs/adr/) — 6 ADRs (Q1, Q2, Q10, Q13+Q16, Q11, Q17+Q18)
 
 ---
 
@@ -1470,7 +1472,9 @@ If this works well, the architecture has been validated.
 
 # 27. Development Roadmap
 
-## Phase 0 — Pi Extension Skeleton
+> **All 8 phases shipped (Phase 0–8, 2026-09-13).** This section is preserved for historical context — every item below is now `✅ shipped`. See [STATE.md](../.planning/STATE.md) for the per-phase test counts and [AGENTS.md §"Project status"](../AGENTS.md) for one-line summaries.
+
+## ✅ Phase 0 — Pi Extension Skeleton
 
 Goal:
 
@@ -1490,7 +1494,7 @@ No complex Novel State.
 
 ---
 
-## Phase 1 — External Editor
+## ✅ Phase 1 — External Editor
 
 Implement:
 
@@ -1510,13 +1514,13 @@ Requirements:
 
 ---
 
-## Phase 2 — Agent Registry
+## ✅ Phase 2 — Agent Registry
 
 Implement the five core Agents.
 
 ---
 
-## Phase 3 — Skill System
+## ⏸ Phase 3 — Skill System (deferred per ADR-0005)
 
 Implement:
 
@@ -1534,7 +1538,7 @@ Scene Design
 
 ---
 
-## Phase 4 — Subagent Delegation
+## ⏸ Phase 4 — Subagent Delegation (deferred per ADR-0005)
 
 Add the first useful specialists:
 
@@ -1549,7 +1553,7 @@ Do not implement every proposed Subagent yet.
 
 ---
 
-## Phase 5 — Novel State
+## ✅ Phase 5 — Novel State
 
 Define and implement P0 schemas.
 
@@ -1568,7 +1572,7 @@ Canon Change
 
 ---
 
-## Phase 6 — Workflow Engine
+## ✅ Phase 6 — Workflow Engine
 
 Implement:
 
@@ -1583,7 +1587,7 @@ Make workflows resumable.
 
 ---
 
-## Phase 7 — tmux
+## ✅ Phase 7 — tmux
 
 Add tmux only after direct editor interaction is stable.
 
@@ -1630,18 +1634,27 @@ The most important architectural decision is:
 
 ---
 
-# 29. Next Design Tasks
+> **All 10 items resolved (2026-09-13).** Original ordering kept for historical context. Outcomes map to:
+> 1–4 → `extensions/novel/schemas.ts` (P0 schemas: Character, Character Knowledge, Scene, Story Line, plus TimelineEvent, Foreshadowing, UnresolvedThread, CanonChange)
+> 5 → ADR-0004 (Director route.yaml router)
+> 6 → ADR-0005 (subagents earned, not declared)
+> 7 → ADR-0005 + the 5 pre-declared agents that ship the body inline
+> 8 → `config/route.yaml` (9 intents) + `extensions/orchestrator/route.ts`
+> 9 → ADR-0002 + `extensions/editor/gate.ts` (decideOutcome) + `extensions/workflow/transitions.ts`
+> 10 → Phase 0–8 shipped — see [AGENTS.md §"Project status"](../AGENTS.md)
 
 Before implementation, the next design session should focus on these items in order:
 
-1. **Novel State schema**
-2. **Character Knowledge model**
-3. **Scene model**
-4. **Story Line / Dark Line model**
-5. **Agent Contract**
-6. **Subagent Contract**
-7. **Skill format**
-8. **Workflow definition format**
+1. ✅ **Novel State schema** — landed in `extensions/novel/schemas.ts` (P0)
+2. ✅ **Character Knowledge model** — POV-derived + `state/character-beliefs.yaml` overrides (Q3)
+3. ✅ **Scene model** — authored intent + derived facts split (Q12)
+4. ✅ **Story Line / Dark Line model** — named N-lines w/ `kind: bright | dark | subplot | red-herring` (Q4)
+5. ✅ **Agent Contract** — TypeBox schemas in each `extensions/agents/*.ts`
+6. ⏸ **Subagent Contract** — deferred per ADR-0005 (earned, not declared)
+7. ✅ **Skill format** — multi-file `SKILL.md` (Q15) + on-demand body loading
+8. ✅ **Workflow definition format** — `config/route.yaml` + `matchRoute` (Q13+Q16 / ADR-0004)
+9. ✅ **Human approval protocol** — editor-as-gate with mtime-based `decideOutcome` (Q8)
+10. ✅ **Minimal Pi Extension implementation** — `extensions/index.ts` + 8 phases shipped
 9. **Human approval protocol**
 10. **Minimal Pi Extension implementation**
 

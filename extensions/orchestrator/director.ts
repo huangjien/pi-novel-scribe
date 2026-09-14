@@ -12,6 +12,7 @@
 import { resolve } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import { DEFAULT_LANGUAGE, localizedError, resolveLanguage, toolStrings } from "../i18n/index.ts"
 import { loadRouteTable, type MatchResult, matchRoute, type RouteTable } from "./route.ts"
 
 export function registerDirectorTool(pi: ExtensionAPI, routePath: string): RouteTable {
@@ -20,37 +21,39 @@ export function registerDirectorTool(pi: ExtensionAPI, routePath: string): Route
 
 	pi.registerTool({
 		name: "run_director",
-		label: "Run Director",
-		description:
-			"Route user input to a workflow via config/route.yaml. Returns the matched intent and primary agent. Phase 2 limitation: throws on no match (LLM fallback is Phase 3+).",
-		promptSnippet: "Match user input against route table; returns intent + dispatch plan.",
-		promptGuidelines: [
-			"Use run_director when the user types /novel and you need to decide which workflow to invoke.",
-			"After run_director, the LLM should call delegate_to_<intent> based on the returned intent name.",
-		],
+		label: toolStrings(DEFAULT_LANGUAGE, "run_director").label,
+		description: toolStrings(DEFAULT_LANGUAGE, "run_director").description,
+		promptSnippet: toolStrings(DEFAULT_LANGUAGE, "run_director").promptSnippet,
+		promptGuidelines: [...toolStrings(DEFAULT_LANGUAGE, "run_director").promptGuidelines],
 		parameters: Type.Object({
 			input: Type.String({ description: "Raw user input to route." }),
+			language: Type.Optional(
+				Type.Union([Type.Literal("en"), Type.Literal("zh")], {
+					description: "Override the working language for this call.",
+				}),
+			),
 		}),
-		async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-			const input = (params as { input: string }).input
+		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+			const p = params as { input: string; language?: "en" | "zh" }
+			const lang = resolveLanguage(ctx, { flag: p.language, cwd: ctx.cwd })
+			const input = p.input
 			const match = matchRoute(input, table)
 			if (!match) {
-				throw new Error(
-					`run_director: no route matched input "${input.slice(0, 60)}" and LLM fallback is not yet wired (Phase 3+). Add a fallback route to config/route.yaml or wire the LLM classifier.`,
-				)
+				localizedError(lang, "route_no_match", input)
 			}
 			const plan = dispatchPlan(match, table)
+			const text =
+				lang === "zh"
+					? `调度器匹配：intent="${plan.intent}" via ${plan.matched_via}="${plan.matched_trigger}"。` +
+						`主代理：${plan.primary}。支持：[${
+							plan.support.join("、") || "无"
+						}]。下一步：使用原始输入调用 delegate_to_${plan.primary}。`
+					: `Director matched intent="${plan.intent}" via ${plan.matched_via}="${plan.matched_trigger}". ` +
+						`Primary agent: ${plan.primary}. Support: [${plan.support.join(", ") || "none"}]. ` +
+						`Next: invoke delegate_to_${plan.primary} with the original input.`
 			return {
-				content: [
-					{
-						type: "text",
-						text:
-							`Director matched intent="${plan.intent}" via ${plan.matched_via}="${plan.matched_trigger}". ` +
-							`Primary agent: ${plan.primary}. Support: [${plan.support.join(", ") || "none"}]. ` +
-							`Next: invoke delegate_to_${plan.primary} with the original input.`,
-					},
-				],
-				details: plan,
+				content: [{ type: "text", text }],
+				details: { ...plan, language: lang },
 			}
 		},
 	})

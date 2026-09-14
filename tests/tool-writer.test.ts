@@ -100,7 +100,7 @@ describe("delegate_to_writer tool wrapper", () => {
 		expect(result.details.pov).toBe("sara")
 		expect(result.details.wordCount).toBeGreaterThan(0)
 		expect(result.content[0]?.text).toContain("Drafted")
-		expect(result.content[0]?.text).toContain("human_editing")
+		expect(result.content[0]?.text).toContain("Human Editing")
 
 		// Status was transitioned
 		const { readFileSync } = await import("node:fs")

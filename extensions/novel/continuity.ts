@@ -19,6 +19,7 @@ export interface ChapterContent {
 	readonly chapterPath: string
 	readonly chapterNumber: number | null
 	readonly status: string | null
+	readonly language: string | null
 	readonly body: string
 	readonly sceneIds: readonly string[]
 }
@@ -82,6 +83,7 @@ export function listApprovedChapters(novelRepo: string): ChapterContent[] {
 			chapterNumber:
 				typeof frontmatter.chapter === "number" ? (frontmatter.chapter as number) : null,
 			status,
+			language: typeof frontmatter.language === "string" ? (frontmatter.language as string) : null,
 			body,
 			sceneIds: scenes.map((s) => s.id),
 		})
