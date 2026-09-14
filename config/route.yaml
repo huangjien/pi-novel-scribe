@@ -1,0 +1,269 @@
+# route.yaml — pi-novel-scribe Director routing rules
+#
+# Read by: `extensions/orchestrator/route.ts` on every Director invocation.
+# Modeled on `~/.agents/route.yaml` (Major orchestrator pattern).
+# Edit this file to add routes, change sub-agents, or tune triggers.
+# Per-novel overrides via `<novelRepo>/.pi/novel-state.yaml`.
+
+version: 1
+
+# ============================================================================
+# Director behavior config
+# ============================================================================
+major_agent:
+  name: Director
+  description: >
+    Universal entry point. Matches user input to a novel-writing intent
+    via this route table, then dispatches to the route's primary + support
+    agents. Falls back to LLM-determined dispatch for ambiguous input
+    (see "fallback" route at the bottom).
+  default_behavior: classify_then_delegate
+
+  # Things the Director handles directly (DO NOT delegate)
+  handle_directly:
+    - greetings            # hi, hello, hey
+    - farewells            # bye, thanks
+    - identity_queries     # who are you, what can you do
+    - clarifications       # asking about a previous response
+    - meta_novel_scribe    # questions about this extension itself
+
+# ============================================================================
+# Sub-agent registry (per Q11: actual sub-agents come later; for now, agents)
+# `tier` maps to model choice. Tier hints are suggestions, not hard requirements.
+# ============================================================================
+subagents:
+  - id: director
+    role: Routing + orchestration + workflow glue
+    tier: expensive        # needs context across novel state
+  - id: planner
+    role: Premise → snowflake → arc → chapter → scene plans
+    tier: balanced
+  - id: writer
+    role: Prose + revisions
+    tier: balanced
+  - id: critic
+    role: Story/character/pacing/prose critique (segmented by category, per Q11)
+    tier: expensive
+  - id: continuity
+    role: Canon-consistency, character-beliefs derivation, fact extraction
+    tier: expensive
+
+# ============================================================================
+# Routes — match user input to a workflow
+# Trigger matching: keyword OR phrase OR regex (case-insensitive substring).
+# Order matters: earlier routes win on ties; priority breaks remaining ties.
+# ============================================================================
+routes:
+
+  - intent: write_chapter
+    description: "Draft a chapter (the canonical `/novel write` workflow)"
+    triggers:
+      keywords: [write, draft, compose, generate, "next chapter"]
+      phrases:
+        - write the next chapter
+        - draft chapter
+        - write chapter
+        - generate the next chapter
+        - continue drafting
+    agents:
+      primary: writer
+      support: [planner, continuity]   # planner → unapproved plan; continuity → belief refresh
+    requires_state: ["chapters.next_unapproved"]   # there must be a chapter to write
+    transitions_status: [planned → writing → drafted → human_editing]
+    priority: 100      # this is the headline workflow
+
+  - intent: plan_chapter
+    description: "Generate a chapter plan (the canonical `/novel plan` workflow)"
+    triggers:
+      keywords: [plan, outline, scaffold, sketch, scenes]
+      phrases:
+        - plan the next chapter
+        - plan chapter
+        - sketch scenes
+        - outline chapter
+        - design scenes
+    agents:
+      primary: planner
+      support: []
+    requires_state: ["chapters.planned_or_next"]
+    transitions_status: [planned → planned]   # no status change; planner writes plan
+    priority: 95
+
+  - intent: review_chapter
+    description: "Run Critic + Continuity on a chapter (the canonical `/novel review` workflow)"
+    triggers:
+      keywords: [review, critique, feedback, crit, evaluate, "feedback"]
+      phrases:
+        - review chapter
+        - review this
+        - critique chapter
+        - give me feedback
+        - what do you think of chapter
+    agents:
+      primary: critic
+      support: [continuity]    # parallel: fact-check
+    requires_state: ["chapters.drafted_or_approved"]
+    transitions_status: []    # review does not auto-advance; author decides
+    priority: 90
+
+  - intent: revise_chapter
+    description: "Apply review issues to a chapter (the canonical `/novel revise` workflow)"
+    triggers:
+      keywords: [revise, tighten, rewrite, improve, fix, polish]
+      phrases:
+        - revise chapter
+        - tighten this
+        - improve chapter
+        - rewrite chapter
+        - apply review
+    agents:
+      primary: writer
+      support: [critic, continuity]   # writer drafts, critic + continuity check diff
+    requires_state: ["chapters.reviewed"]
+    transitions_status: [drafted → drafted]
+    priority: 88
+
+  - intent: continue_novel
+    description: "Resume work from where the novel left off (the canonical `/novel continue` workflow)"
+    triggers:
+      keywords: [continue, resume, "where was i", "what's next"]
+      phrases:
+        - continue the novel
+        - where was I
+        - pick up from
+        - resume writing
+    agents:
+      primary: planner
+      support: [writer]      # planner decides; writer drafts if plan exists
+    requires_state: ["chapters.next_unapproved"]
+    transitions_status: [planned → writing]
+    priority: 80
+
+  - intent: inspect_novel_state
+    description: "Read-only queries against canonical novel state"
+    triggers:
+      keywords: [what, "who knows", "where is", "what happened"]
+      phrases:
+        - what does sara know
+        - what is the dark line
+        - show character beliefs
+        - what has been foreshadowed
+        - who is in chapter
+        - what is the current plan
+    agents:
+      primary: continuity   # canonical authority for canonical facts
+      support: []
+    requires_state: []      # always allowed (read-only)
+    transitions_status: []  # never mutates state
+    priority: 70
+
+  - intent: investigate_continuity_break
+    description: "Diagnose a suspected contradiction in canon or character beliefs"
+    triggers:
+      keywords: [contradiction, "doesn't make sense", inconsistent, conflict, "wait"]
+      phrases:
+        - is this consistent
+        - did sara know about
+        - what happened to
+        - why did the watcher
+        - check continuity
+    agents:
+      primary: continuity
+      support: [critic]     # critic can read prose for evidence
+    requires_state: []
+    transitions_status: []
+    priority: 65
+
+# ============================================================================
+# Approval-response routes (per Q8 — editor-as-approval-gate)
+# ============================================================================
+
+  - intent: approve_pending_change
+    description: "Author approves a Level-2/3 editor-gated proposal"
+    triggers:
+      keywords: [approve, yes, "looks good", "ship it", accept]
+      phrases:
+        - approve the change
+        - looks good
+        - yes do it
+        - commit it
+    agents:
+      primary: director       # just commit the pending proposal
+      support: []
+    requires_state: ["workflow.pending_approval"]
+    transitions_status: []    # depends on the proposal; director routes internally
+    priority: 200             # approval responses win even over chapter writes
+
+  - intent: reject_pending_change
+    description: "Author rejects a Level-2/3 editor-gated proposal"
+    triggers:
+      keywords: [reject, "no", cancel, "don't", revert]
+      phrases:
+        - reject the change
+        - don't change
+        - never mind
+        - cancel that
+        - revert
+    agents:
+      primary: director
+      support: []
+    requires_state: ["workflow.pending_approval"]
+    transitions_status: []
+    priority: 200
+
+# ============================================================================
+# Fallback (no route matched) — per ~/.agents/route.yaml
+# ============================================================================
+fallback:
+  intent: meta_novel_scribe
+  description: "Could not confidently classify the request"
+  agents:
+    primary: director          # safest default: Director asks one clarifying Q
+                                # OR reasons about which route best fits
+  note: |
+    Ask ONE clarifying question before delegating. If the user names a
+    workflow explicitly ("/novel write"), honor that over keyword matching
+    (see "rules.explicit_over_implicit"). Never ping-pong.
+
+# ============================================================================
+# Meta-rules (route behavior modifiers)
+# ============================================================================
+rules:
+  - name: explicit_over_implicit
+    description: >
+      If the user types `/novel <cmd>` explicitly, dispatch to that
+      command regardless of route match. Honor the slash command.
+  - name: approval_responses_win
+    description: >
+      `approve_pending_change` and `reject_pending_change` win even
+      over chapter-writing routes when a proposal is pending.
+  - name: cost_awareness
+    description: >
+      Tier hints (expensive/balanced/cheap) suggest model choice for
+      each subagent. Respect when picking a model for the call.
+  - name: no_orphan_delegation
+    description: >
+      Never invoke a sub-agent silently — announce
+      "Dispatching to {primary} because {matched_route}" first.
+  - name: recursion_caps_enforced
+    description: >
+      Per-route `recursion_caps` (when set) override the global caps
+      from settings. Hybrid safety per Q14: prompt + runtime guards.
+  - name: read_only_inspect
+    description: >
+      `inspect_novel_state` and `investigate_continuity_break` are
+      guaranteed read-only: they may not mutate `state/` or chapter
+      `status`. Author's novel repo is read-locked for the duration.
+
+# ============================================================================
+# Default recursion caps (per-route overrides win) — review §22 / Q14
+# ============================================================================
+recursion_caps_default:
+  max_agent_depth: 2
+  max_subagents_per_task: 4
+  max_iterations: 2
+  max_tokens_per_call: 8000
+  max_time_seconds: 120
+
+# Per-route overrides (add `recursion_caps:` block under any route above
+# to tighten these for that specific workflow)

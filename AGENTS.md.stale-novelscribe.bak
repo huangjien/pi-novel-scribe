@@ -1,0 +1,123 @@
+# AGENTS.md — NovelScribe (`wst/`)
+
+> **Project guide for agent tools.** This file is the canonical entrypoint — there is no `CLAUDE.md`.
+> The global orchestrator system lives at `~/.agents/AGENTS.md` (symlinked as `~/AGENTS.md`).
+
+## Project at a glance
+
+- **Name:** NovelScribe (`novelscribe`) — AI-powered autonomous novel generation via multi-agent architecture
+- **CLI:** `scribe` · **PyPI:** `novelscribe`
+- **Layout:** `novel_harness/` (Python package), `frontend/`, `docs/`, `scripts/`, `sync_backend/`
+- **Quality gate:** `make check` (from repo root `wst/`) must pass clean
+
+## Where to look (besides this file)
+
+| Need | Read |
+|---|---|
+| Domain language, decisions, deep context | [CONTEXT.md](./CONTEXT.md) · [CONTEXT-MAP.md](./CONTEXT-MAP.md) |
+| Milestone history / upcoming designs | [docs/plans/index.md](./docs/plans/index.md) |
+| Top-level commands | `make help` · [Makefile](./Makefile) |
+
+---
+
+# NovelScribe Project Guide
+
+NovelScribe (`novelscribe`) — AI-powered autonomous novel generation via multi-agent architecture. CLI: `scribe`. PyPI: `novelscribe`.
+
+## Commands
+
+`make` runs from repo root (`wst/`), `uv run` from `novel_harness/`:
+
+```bash
+cd novel_harness && uv sync --all-extras   # install deps (CI: 3.10–3.13)
+uv run pytest tests/test_foo.py -v         # single test file
+make test                                   # all tests + coverage
+make check                                  # format + lint + type-check + tests
+make format-lint                            # format + lint only (zero warnings)
+make format / make lint / make type-check   # individual
+make build / make publish                   # build / PyPI (needs PYPI_API_TOKEN)
+uv run python -m cli --help                 # CLI (from novel_harness/)
+```
+
+**Quality gate:** `make check` must pass clean before marking work done.
+
+## Architecture
+
+Package at `novel_harness/`, flat layout (no `src/`).
+
+| Layer | Location | Responsibility |
+|---|---|---|
+| **Orchestrator** | `core/orchestration/` | Central coordinator — loads agents/workflows, delegates |
+| **Autonomous Executor** | `core/orchestration/` | End-to-end pipeline (facade + builder + checkpoint + phase runner) |
+| **Runtime Kernel** | `core/runtime/` | `RuntimeKernel` facade — turn-loop engine |
+| **LLM Client** | `core/llm/` | Multi-provider (OpenAI, Claude, Gemini, Ollama, LM Studio, MiniMax, ZhipuAI, Moonshot) |
+| **Agent System** | `agents/` + `core/agents/` | 19 Markdown-defined roles (15 pipeline + 4 monitor), 3 languages |
+| **Workflow Executor** | `core/workflow/` | YAML-defined multi-step execution + triggers |
+| **Hook Event-Bus** | `core/hooks/` | Ordered dispatch, retry, plugin manager |
+| **Quality** | `core/quality/` | RevisionLoop — post-phase revision with LLM feedback |
+| **CheckpointFlow** | `core/autonomous/` | Pre-phase admission control |
+| **Long Form Memory** | `core/memory/longform/` | Semantic recall — ChapterTextStore, EmbeddingIndex, reranker |
+| **Observability** | `core/logging/` + `core/metrics/` | Structured logging, correlation IDs, `/api/v1/metrics` |
+| **Language Config** | `core/i18n/` | en, zh-CN, zh-TW with cascading priority |
+| **Storage** | `core/storage/` | Abstracted storage, factory → file backend |
+| **Sync Backend** | `sync_backend/` | Thin FastAPI server (port 8001) — projects, chapters, reading state, agent/workflow mirror, legacy SDK aliases |
+
+## Key Patterns
+
+- **Pydantic** for all config/data, **Factory** for LLM clients and storage backends
+- **Agents as Markdown** (runtime-parsed), **Workflows as YAML** with `{context.field}` variable resolution
+- **ContextVar** correlation for async-safe trace propagation
+- **uv** for deps (not pip/poetry); coverage paths use module names
+
+## Engineering Principles
+
+- **No backward-compat cruft.** Do not preserve obsolete paths. Remove deprecated routes, settings, file formats, and aliases instead of adding compatibility layers, fallbacks, or migrations.
+- **Simplest implementation that meets the need.** Avoid speculative abstractions, configuration, and indirection. If 50 lines solve the problem, do not write 200.
+- **Grow in working layers.** Start from the smallest version that works end to end, then add each new capability on top of a product that already works. Never trade a working product for unfinished complexity.
+- **Modular concerns.** Keep components modular and concerns clearly separated so they can be tested, replaced, and reasoned about in isolation.
+- **Established libraries first.** Prefer well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
+- **Lean on existing deps first.** Use the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
+- **Decide for the long term.** Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
+- **Study proven patterns first.** Before designing a solution, study how established products solve the problem. Adopt their proven patterns and conventions rather than inventing an approach from scratch.
+
+## Conventions
+
+- Spec → Task → Code. Read before modifying. No ghost code. Type hints required. Google-style docstrings.
+- New dependencies need explicit approval.
+
+## Behavioral Guidelines
+
+1. **Think first** — state assumptions, surface tradeoffs, ask when unclear.
+2. **Simplicity first** — minimum code, no speculative features, no abstractions for single-use code.
+3. **Surgical changes** — touch only what you must, clean up only your own orphans, match existing style.
+4. **Goal-driven** — define verifiable success criteria, loop until they pass.
+5. **Deterministic code** — never delegate branching/validation/numeric logic to an LLM call.
+6. **Budget discipline** — limit context, checkpoint early, avoid re-reading large files.
+7. **Surface conflicts** — inconsistent patterns → ask, don't silently merge.
+8. **Read before writing** — extend existing utilities, don't duplicate.
+9. **Verify test intent** — passing ≠ correct; read what tests actually assert.
+10. **Checkpoint long workflows** — each stage independently resumable.
+11. **Match conventions** — consistency over theoretical purity.
+12. **Expose uncertainty** — never silently guess; flag risks explicitly.
+
+## Project Milestones
+
+See [docs/plans/index.md](docs/plans/index.md) for history (v2.2–v6.0) and upcoming designs.
+
+## GSD File Conventions
+
+All milestones under `docs/plans/vX.Y/`:
+
+1. Each milestone has a `vX.Y/` subdirectory with a `*milestone-vX.Y-*.md` marker containing `**Status:** Complete|Planned`.
+2. `sync_version.sh --from-gsd` reads the highest `Complete` marker to set the package version.
+3. **New milestone:** create `vX.Y/` dir → marker (`Status: Planned`) → design doc → tasks doc → on completion update marker to `Complete` → update `index.md`.
+4. No milestone docs in `novel_harness/docs/plans/` (deprecated; use `_archive/`).
+
+---
+
+## Global orchestrator (optional)
+
+The Major agent at `~/.agents/AGENTS.md` (route.yaml + subagents) classifies intent and
+delegates to specialist subagents (`coder`, `debugger`, `reviewer`, `researcher`,
+`tester`, `doc-writer`, `architect`). Use it when this project's rules need to be combined
+with cross-tool routing.

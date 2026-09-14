@@ -1,0 +1,50 @@
+{
+	"name": "pi-novel-scribe",
+	"version": "0.0.1",
+	"description": "Pi extension for long-form novel writing. Substrate-only MVP (Phase 0.5).",
+	"type": "module",
+	"keywords": [
+		"pi-package"
+	],
+	"license": "MIT",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check",
+		"format": "biome format --write",
+		"format-lint": "biome format --write && biome check",
+		"check": "biome check && tsc --noEmit",
+		"test": "vitest run",
+		"coverage": "vitest run --coverage",
+		"watch": "vitest"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-ai": "*",
+		"@earendil-works/pi-coding-agent": "*",
+		"pi-agent-core": "*",
+		"pi-coding-agent": "*",
+		"pi-tui": "*",
+		"typebox": "*"
+	},
+	"dependencies": {
+		"js-yaml": "^5.4.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.13",
+		"@types/js-yaml": "^4.0.9",
+		"@types/node": "^26.5.1",
+		"@vitest/coverage-v8": "^5.0.0",
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.0"
+	},
+	"pi": {
+		"extensions": [
+			"./extensions/index.ts"
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	}
+}
