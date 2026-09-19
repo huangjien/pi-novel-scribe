@@ -11,6 +11,7 @@ coverage/
 .pi/
 examples/
 
+.omo
 # Editor scratch
 .idea/
 .vscode/*

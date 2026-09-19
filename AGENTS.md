@@ -58,9 +58,17 @@ npm pack                                        # build tarball for `pi install 
 
 Full detail in [pi-novel-architecture-review.md](./pi-novel-architecture-review.md). The vertical:
 
-```
-Author → Director → Planner → Writer → Human Editor (($VISUAL || $EDITOR))
-                    → Critic / Continuity / Canon update → Author approval
+```mermaid
+flowchart LR
+    A[Author] --> D[Director]
+    D --> P[Planner] --> W[Writer]
+    W --> HE["Human Editor ($VISUAL || $EDITOR)"]
+    HE --> C[Critic]
+    HE --> CO[Continuity]
+    HE --> CU[Canon update]
+    C --> AP[Author approval]
+    CO --> AP
+    CU --> AP
 ```
 
 | Layer | Responsibility | Lives in |
@@ -109,7 +117,7 @@ pi-novel-scribe/
 │   ├── editor/                 # open.ts (VISUAL/EDITOR + platform fallback, Injection), gate.ts (openApprovalGate + decideOutcome)
 │   ├── state/path-resolver.ts  # novelRepo resolution (Q1 / ADR-0001)
 │   ├── workflow/               # status.ts (10-status enum + frontmatter parser/serializer),
-│   │                           # transitions.ts (12-edge graph + BFS path finder)
+│   │                           # transitions.ts (13-edge graph + BFS path finder)
 │   ├── tmux/widget.ts          # Phase 7 status widget (works without tmux)
 │   ├── wiki/                   # ADR-0006: schema.ts, db.ts (node:sqlite via createRequire),
 │   │                           #   fts.ts (FTS5 BM25 candidates), rerank.ts (LLM top-5),
@@ -199,7 +207,7 @@ The architecture review's §29 names the priority order. For Phase 0 (extension 
 - ✅ **Phase 3.6 — Critic end-to-end** (`extensions/agents/critic.ts`; composeCriticContext; 5-field issue validation; writes `review:` block)
 - ✅ **Phase 4 — Continuity** (read-side: `extensions/novel/continuity.ts` derives reader/character knowledge; refresh mode writes `state/character-beliefs.yaml`)
 - ✅ **Phase 5 — Novel State** (P0 schemas: Character, Character Knowledge, Scene, StoryLine, Foreshadowing, UnresolvedThread, TimelineEvent, CanonChange; canon propose/apply/deprecate lifecycle)
-- ✅ **Phase 6 — Workflow engine** (12-edge transition graph, gate integration, `requires_state` checks, `canon_approve` tool, resume-on-exit scan)
+- ✅ **Phase 6 — Workflow engine** (13-edge transition graph, gate integration, `requires_state` checks, `canon_approve` tool, resume-on-exit scan)
 - ✅ **Phase 7 — tmux UI** (optional tmux layout + `extensions/tmux/widget.ts` custom widget — works in plain pi without tmux; 7 widget tests)
 - ✅ **Phase 8 — LLM Wiki** (`extensions/wiki/` + `extensions/tools/wiki-search.ts`; read-only SQLite consumer of the wst NovelScribe reference corpus via `node:sqlite`; FTS5 BM25 → LLM rerank top 5; per ADR-0006; 21 tests)
 - ✅ **Phase 9 — Multilingual (en + zh)** (`extensions/i18n/` module + `prompts/zh/*.md`; localized tool descriptions / prompt snippets / status display / error messages; per ADR-0007; override chain = command flag > chapter frontmatter > settings > auto-detect > fallback; `/novel write --lang=zh`; 27 tests)

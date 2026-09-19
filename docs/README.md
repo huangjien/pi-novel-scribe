@@ -41,21 +41,16 @@ with their conventions captured in `AGENTS.md`.)
 
 ## How this doc set fits together
 
-```
-README.md               ← humans: 60-second tour
-   │
-   ├─► AGENTS.md        ← agent tools + humans: conventions, commands, status
-   │
-   ├─► CONTEXT.md       ← all: 16 locked terms (glossary)
-   │
-   ├─► pi-novel-architecture-review.md   ← design reviewers: v0.4 + Update Log
-   │
-   ├─► .planning/STATE.md ← maintainers: phase + ADR tracking
-   │
-   └─► docs/
-         ├─► README.md  (this file)   ← project-wide doc index
-         ├─► adr/                      ← 5 ADRs (Q1, Q2, Q10, Q13+Q16, Q11)
-         └─► phase-7/                  ← Phase 7 tmux stance + opt-in layout
+```mermaid
+flowchart TD
+    R["README.md<br/>humans: 60-second tour"] --> A["AGENTS.md<br/>agent tools + humans: conventions, commands, status"]
+    R --> C["CONTEXT.md<br/>all: 16 locked terms (glossary)"]
+    R --> AR["pi-novel-architecture-review.md<br/>design reviewers: v0.4 + Update Log"]
+    R --> S[".planning/STATE.md<br/>maintainers: phase + ADR tracking"]
+    R --> D[docs/]
+    D --> DR["README.md (this file)<br/>project-wide doc index"]
+    D --> AD["adr/<br/>5 ADRs (Q1, Q2, Q10, Q13+Q16, Q11)"]
+    D --> P["phase-7/<br/>Phase 7 tmux stance + opt-in layout"]
 ```
 
 Update `STATE.md` first when milestones change, then mirror the change into

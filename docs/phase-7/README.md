@@ -3,9 +3,15 @@
 Phase 7 is **wired**. Per review §16, tmux is an **optional** UI adapter, and
 the implementation ladder is:
 
-```
-Pi → $EDITOR → Pi          (Phase 0.5 substrate — shipped)
-Pi │ Editor │ Status       (Phase 7 — shipped; tmux opt-in)
+```mermaid
+flowchart LR
+    subgraph P05["Phase 0.5 substrate — shipped"]
+        A[Pi] --> B["$EDITOR"] --> C[Pi]
+    end
+    subgraph P7["Phase 7 — shipped; tmux opt-in"]
+        D["Pi │ Editor │ Status"]
+    end
+    P05 --> P7
 ```
 
 The substrate (Phase 0.5) shipped early — opening `$VISUAL`/`$EDITOR` is a

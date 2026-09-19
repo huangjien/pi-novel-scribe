@@ -67,24 +67,16 @@ The initial architecture deliberately excludes:
 
 The first objective is to prove one excellent vertical workflow:
 
-```text
-Author
-  ↓
-Director
-  ↓
-Planner
-  ↓
-Writer
-  ↓
-Human Editor
-  ↓
-Continuity
-  ↓
-Critic
-  ↓
-Author approval
-  ↓
-Canon update
+```mermaid
+flowchart TD
+    A[Author] --> D[Director]
+    D --> P[Planner]
+    P --> W[Writer]
+    W --> E[Human Editor]
+    E --> C[Continuity]
+    C --> R[Critic]
+    R --> AP[Author approval]
+    AP --> CU[Canon update]
 ```
 
 ---
@@ -163,41 +155,21 @@ A Skill should not normally have an independent personality or conversation hist
 
 # 3. High-Level Architecture
 
-```text
-                         ┌──────────────┐
-                         │    Author    │
-                         └──────┬───────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │ Director Agent  │
-                       └────────┬────────┘
-                                │
-              ┌─────────────────┼─────────────────┐
-              ▼                 ▼                 ▼
-        ┌──────────┐      ┌──────────┐      ┌──────────┐
-        │ Planner  │      │  Writer  │      │  Critic  │
-        │  Agent   │      │  Agent   │      │  Agent   │
-        └────┬─────┘      └────┬─────┘      └────┬─────┘
-             │                 │                 │
-             ▼                 ▼                 ▼
-         Subagents         Subagents         Subagents
-             │                 │                 │
-             └─────────────────┼─────────────────┘
-                               ▼
-                     ┌──────────────────┐
-                     │ Continuity Agent │
-                     └────────┬─────────┘
-                              │
-                              ▼
-                       ┌─────────────┐
-                       │ Novel State │
-                       └──────┬──────┘
-                              │
-                       ┌──────┴──────┐
-                       ▼             ▼
-                  System Editor     tmux
-                    optional       optional
+```mermaid
+flowchart TD
+    Author --> Director[Director Agent]
+    Director --> Planner[Planner Agent]
+    Director --> Writer[Writer Agent]
+    Director --> Critic[Critic Agent]
+    Planner --> SA1[Subagents]
+    Writer --> SA2[Subagents]
+    Critic --> SA3[Subagents]
+    SA1 --> Continuity[Continuity Agent]
+    SA2 --> Continuity
+    SA3 --> Continuity
+    Continuity --> NS[Novel State]
+    NS -.->|optional| SysEd[System Editor]
+    NS -.->|optional| T[tmux]
 ```
 
 The key boundary is:
@@ -476,16 +448,12 @@ This is one of the most important areas requiring explicit design.
 
 Information should have lifecycle states:
 
-```text
-idea
-  ↓
-draft
-  ↓
-proposed
-  ↓
-validated
-  ↓
-approved/canon
+```mermaid
+flowchart TD
+    I[idea] --> D[draft]
+    D --> P[proposed]
+    P --> V[validated]
+    V --> AC[approved/canon]
 ```
 
 Potentially:
@@ -511,18 +479,13 @@ state_changes:
 
 Flow:
 
-```text
-Writer
-  ↓
-Proposed State Change
-  ↓
-Continuity Agent
-  ↓
-validation
-  ↓
-Author/Director approval
-  ↓
-Canon
+```mermaid
+flowchart TD
+    W[Writer] --> PC[Proposed State Change]
+    PC --> CA[Continuity Agent]
+    CA --> V[validation]
+    V --> AP["Author/Director approval"]
+    AP --> CN[Canon]
 ```
 
 ---
@@ -718,35 +681,23 @@ edit_file(path)
 
 Workflow:
 
-```text
-Agent
-  ↓
-prepare file
-  ↓
-open system editor
-  ↓
-human edits
-  ↓
-editor exits
-  ↓
-re-read file
-  ↓
-compare before/after
-  ↓
-continue workflow
+```mermaid
+flowchart TD
+    A[Agent] --> PF[prepare file]
+    PF --> OE[open system editor]
+    OE --> HE[human edits]
+    HE --> EX[editor exits]
+    EX --> RR["re-read file"]
+    RR --> CP[compare before/after]
+    CP --> CW[continue workflow]
 ```
 
 Editor resolution:
 
-```text
-$VISUAL
-↓
-$EDITOR
-↓
-platform default
+```mermaid
+flowchart TD
+    V["$VISUAL"] --> E["$EDITOR"] --> PD[platform default]
 ```
-
-Fallback examples:
 
 ```text
 Windows → notepad
@@ -796,8 +747,9 @@ tmux is an optional UI adapter.
 
 Initial implementation:
 
-```text
-Pi → $EDITOR → Pi
+```mermaid
+flowchart LR
+    P1[Pi] --> E["$EDITOR"] --> P2[Pi]
 ```
 
 Later:
@@ -842,52 +794,44 @@ Initial commands:
 
 ### Plan
 
-```text
-Director
-  ↓
-Planner
-  ↓
-Skills
-  ↓
-Author approval
+```mermaid
+flowchart TD
+    D[Director] --> P[Planner]
+    P --> S[Skills]
+    S --> A[Author approval]
 ```
 
 ### Write
 
-```text
-Director
-  ↓
-Planner / approved plan
-  ↓
-Writer
-  ↓
-Continuity validation
-  ↓
-Human Editor
+```mermaid
+flowchart TD
+    D[Director] --> P["Planner / approved plan"]
+    P --> W[Writer]
+    W --> CV[Continuity validation]
+    CV --> HE[Human Editor]
 ```
 
 ### Review
 
-```text
-Critic
- ├── Story
- ├── Character
- ├── Pacing
- └── Prose
-       ↓
-Review Report
+```mermaid
+flowchart TD
+    C[Critic] --> S[Story]
+    C --> Ch[Character]
+    C --> Pa[Pacing]
+    C --> Pr[Prose]
+    S --> RR[Review Report]
+    Ch --> RR
+    Pa --> RR
+    Pr --> RR
 ```
 
 ### Revise
 
-```text
-Review
-  ↓
-Writer
-  ↓
-Critic
-  ↓
-Human approval
+```mermaid
+flowchart TD
+    R[Review] --> W[Writer]
+    W --> C[Critic]
+    C --> HA[Human approval]
 ```
 
 ---
@@ -898,33 +842,22 @@ A workflow should be resumable.
 
 Recommended states:
 
-```text
-created
-  ↓
-planning
-  ↓
-planned
-  ↓
-writing
-  ↓
-drafted
-  ↓
-human_editing
-  ↓
-edited
-  ↓
-continuity_check
-  ↓
-reviewing
-  ↓
-revision_required ──────┐
-  │                     │
-  └──── revise ─────────┘
-  ↓
-approved
-  ↓
-canonized
+```mermaid
+stateDiagram-v2
+    created --> planning
+    planning --> planned
+    planned --> writing
+    writing --> drafted
+    drafted --> human_editing
+    human_editing --> edited
+    edited --> continuity_check
+    continuity_check --> reviewing
+    reviewing --> revision_required
+    revision_required --> writing: revise loop
+    revision_required --> approved
+    approved --> canonized
 ```
+
 
 If Pi exits during `human_editing`, the workflow should be recoverable rather than lost.
 
@@ -971,25 +904,15 @@ Director performs every review
 
 Instead:
 
-```text
-Director
-  = orchestration
-
-Planner
-  = structure
-
-Writer
-  = prose
-
-Critic
-  = evaluation
-
-Continuity
-  = canon consistency
-
-Skills
-  = methodology
+```mermaid
+flowchart LR
+    D["Director = orchestration"] --- P["Planner = structure"]
+    P --- W["Writer = prose"]
+    W --- C["Critic = evaluation"]
+    C --- CO["Continuity = canon consistency"]
+    CO --- S["Skills = methodology"]
 ```
+
 
 The Director should be relatively thin.
 
@@ -1048,8 +971,10 @@ limits:
 
 The Director should not endlessly repeat:
 
-```text
-Writer → Critic → Writer → Critic → ...
+```mermaid
+flowchart LR
+    W[Writer] --> C[Critic]
+    C -->|repeat| W
 ```
 
 A workflow must eventually require human judgment.
@@ -1258,13 +1183,13 @@ A chapter is too coarse for long-form orchestration.
 
 Recommended hierarchy:
 
-```text
-Novel
- └── Major Arc
-      └── Arc
-           └── Chapter
-                └── Scene
-                     └── Beat
+```mermaid
+flowchart TD
+    N[Novel] --> MA[Major Arc]
+    MA --> A[Arc]
+    A --> C[Chapter]
+    C --> S[Scene]
+    S --> B[Beat]
 ```
 
 The first implementation does not need full Beat modeling, but Scene should be first-class.
@@ -1299,14 +1224,11 @@ Otherwise it can gradually reshape the story while writing.
 
 Recommended:
 
-```text
-Planner
-  ↓
-Plan
-  ↓
-Human/Director approval
-  ↓
-Writer
+```mermaid
+flowchart TD
+    P[Planner] --> PL[Plan]
+    PL --> A["Human/Director approval"]
+    A --> W[Writer]
 ```
 
 For exploratory drafting, the Writer may propose plan changes, but those changes should be explicit.
@@ -1417,53 +1339,19 @@ Pi Extension
 
 One complete test should be:
 
-```text
-User:
-"Write the next chapter."
-
-        ↓
-
-Director
-
-        ↓
-
-Planner
-
-        ↓
-
-Scene Plan
-
-        ↓
-
-Human approval
-
-        ↓
-
-Writer
-
-        ↓
-
-External Editor
-
-        ↓
-
-Continuity
-
-        ↓
-
-Critic
-
-        ↓
-
-Revision proposal
-
-        ↓
-
-Human approval
-
-        ↓
-
-Canon update
+```mermaid
+flowchart TD
+    U["User: 'Write the next chapter.'"] --> D[Director]
+    D --> P[Planner]
+    P --> SP[Scene Plan]
+    SP --> HA1[Human approval]
+    HA1 --> W[Writer]
+    W --> EE[External Editor]
+    EE --> CO[Continuity]
+    CO --> CR[Critic]
+    CR --> RP[Revision proposal]
+    RP --> HA2[Human approval]
+    HA2 --> CU[Canon update]
 ```
 
 If this works well, the architecture has been validated.
@@ -1478,16 +1366,12 @@ If this works well, the architecture has been validated.
 
 Goal:
 
-```text
-Pi
- ↓
-Extension
- ↓
-Command
- ↓
-Agent
- ↓
-Result
+```mermaid
+flowchart TD
+    P[Pi] --> E[Extension]
+    E --> C[Command]
+    C --> A[Agent]
+    A --> R[Result]
 ```
 
 No complex Novel State.
@@ -1595,37 +1479,28 @@ Add tmux only after direct editor interaction is stable.
 
 # 28. Final Architecture
 
-```text
-                         AUTHOR
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │   DIRECTOR   │
-                    └──────┬───────┘
-                           │
-             ┌─────────────┼─────────────┐
-             ▼             ▼             ▼
-          PLANNER        WRITER        CRITIC
-             │             │             │
-             └─────────────┼─────────────┘
-                           ▼
-                      CONTINUITY
-                           │
-                           ▼
-                     NOVEL STATE
-                           │
-                 ┌─────────┴─────────┐
-                 ▼                   ▼
-              $EDITOR              tmux
+```mermaid
+flowchart TD
+    AU[AUTHOR] --> DI[DIRECTOR]
+    DI --> PL[PLANNER]
+    DI --> WR[WRITER]
+    DI --> CR[CRITIC]
+    PL --> CO[CONTINUITY]
+    WR --> CO
+    CR --> CO
+    CO --> NS[NOVEL STATE]
+    NS --> ED["$EDITOR"]
+    NS --> TM[tmux]
 ```
 
 Cross-cutting:
 
-```text
-Skills → Agents
-Workflow → Agents/Subagents
-Context → Novel State
-Approval → Human
+```mermaid
+flowchart LR
+    S[Skills] --> A[Agents]
+    W[Workflow] --> AS["Agents/Subagents"]
+    C[Context] --> NS[Novel State]
+    AP[Approval] --> H[Human]
 ```
 
 The most important architectural decision is:
