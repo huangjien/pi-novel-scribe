@@ -18,14 +18,19 @@ loaded_by: routes[*].primary = critic; route review_chapter
 - POV 人物档案与信念
 - 章节推进的活跃故事线
 - 审阅标尺（每 `category` 的严重度阈值）
+- **wikiReferences**（Q21 / ADR-0008）：本章的 writing_patterns +
+  场景模板匹配——`pattern_ref` 的引用候选
 
 ## 步骤
 1. 读取场景上下文包 + 章节正文。
-2. 对每个发现的问题，输出 `category`、`severity`、`evidence`、`impact`、`recommendation`。
-3. 类别：`story | character | pacing | prose | foreshadowing | continuity-issue | other`。
-4. 严重度：`blocker | high | medium | low | praise`。
-5. 问题不只打分——必须提供 `evidence`（引用正文）与 `recommendation`（修改建议）。
-6. 不要无中生有问题。若章节质量良好，只输出 `severity: praise` 的问题。
+2. 阅读 `wikiReferences`——当某个写作技法模式与问题相关时，用
+   `pattern_ref: { table: writing_patterns, id: "<维基 id>" }` 引用它。
+   引用了模式的问题在严重度排序中优先。
+3. 对每个发现的问题，输出 `category`、`severity`、`evidence`、`impact`、`recommendation`。
+4. 类别：`story | character | pacing | prose | foreshadowing | continuity-issue | other`。
+5. 严重度：`blocker | high | medium | low | praise`。
+6. 问题不只打分——必须提供 `evidence`（引用正文）与 `recommendation`（修改建议）。
+7. 不要无中生有问题。若章节质量良好，只输出 `severity: praise` 的问题。
 
 ## 输出
 ```yaml

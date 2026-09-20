@@ -14,6 +14,14 @@ let tmpDir = ""
 beforeEach(() => {
 	tmpDir = join(tmpdir(), `critic-tool-${Date.now()}-${Math.random().toString(36).slice(2)}`)
 	mkdirSync(tmpDir, { recursive: true })
+	// Deliberately missing wiki DB → packet wiki injection takes the ADR-0008 degradation path (offline, hermetic).
+	const piDir = join(tmpDir, ".pi")
+	mkdirSync(piDir, { recursive: true })
+	writeFileSync(
+		join(piDir, "settings.json"),
+		JSON.stringify({ wikiDbPath: join(tmpDir, "no-wiki.db") }),
+		"utf8",
+	)
 })
 
 afterEach(() => {

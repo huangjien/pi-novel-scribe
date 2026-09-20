@@ -11,6 +11,7 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs"
+import * as yaml from "js-yaml"
 
 export const WORKFLOW_STATUSES = [
 	"planned",
@@ -48,17 +49,31 @@ export function parseFrontmatter(content: string): {
 	if (!match || match[1] === undefined || match[2] === undefined) {
 		return { frontmatter: {}, body: content }
 	}
-	return {
-		frontmatter: parseSimpleYaml(match[1]),
-		body: match[2],
+	let parsed: unknown
+	try {
+		parsed = yaml.load(match[1])
+	} catch {
+		return { frontmatter: {}, body: match[2] ?? "" }
 	}
+	if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+		return { frontmatter: {}, body: match[2] ?? "" }
+	}
+	return { frontmatter: parsed as ChapterFrontmatter, body: match[2] ?? "" }
 }
 
 export function serializeFrontmatter(frontmatter: ChapterFrontmatter): string {
 	const lines = ["---"]
 	for (const [key, value] of Object.entries(frontmatter)) {
 		if (value === undefined) continue
-		lines.push(`${key}: ${JSON.stringify(value)}`)
+		const rendered =
+			value === null
+				? "null"
+				: typeof value === "object"
+					? yaml.dump(value, { lineWidth: -1, flowLevel: 0 }).trimEnd()
+					: typeof value === "string"
+						? JSON.stringify(value)
+						: String(value)
+		lines.push(`${key}: ${rendered}`)
 	}
 	lines.push("---")
 	return lines.join("\n")
@@ -102,46 +117,4 @@ const defaultFsAdapter: FsAdapter = { readFileSync, writeFileSync }
 
 function isWorkflowStatus(value: string): value is WorkflowStatus {
 	return (WORKFLOW_STATUSES as readonly string[]).includes(value)
-}
-
-/**
- * Minimal YAML subset sufficient for chapter frontmatter: `key: value`
- * lines with numbers / booleans / null / strings. Nested structures
- * and lists are out of scope for Phase 0.5.
- */
-function parseSimpleYaml(yaml: string): ChapterFrontmatter {
-	const result: Record<string, unknown> = {}
-	for (const rawLine of yaml.split("\n")) {
-		const line = rawLine.replace(/\s+$/, "")
-		if (shouldSkipLine(line)) continue
-		const parsed = parseLine(line)
-		if (parsed === null) continue
-		result[parsed.key] = coerceValue(parsed.value)
-	}
-	return result as ChapterFrontmatter
-}
-
-function shouldSkipLine(line: string): boolean {
-	return line.length === 0 || line.startsWith("#")
-}
-
-function parseLine(line: string): { key: string; value: string } | null {
-	const colon = line.indexOf(":")
-	if (colon === -1) return null
-	const key = line.slice(0, colon).trim()
-	if (key.length === 0) return null
-	return { key, value: line.slice(colon + 1).trim() }
-}
-
-function coerceValue(raw: string): unknown {
-	const stripped = stripWrappingQuotes(raw)
-	if (/^-?\d+$/.test(stripped)) return Number(stripped)
-	if (stripped === "true") return true
-	if (stripped === "false") return false
-	if (stripped === "null") return null
-	return stripped
-}
-
-function stripWrappingQuotes(s: string): string {
-	return s.replace(/^["'](.*)["']$/, "$1")
 }

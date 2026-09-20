@@ -50,28 +50,32 @@ export const TOOL_STRINGS_EN: Readonly<Record<string, ToolStrings>> = {
 		promptGuidelines: [
 			"Use delegate_to_writer only when the chapter has an approved or provisional plan.",
 			"Always set chapter_id (filename or absolute path) so the Writer knows what to draft.",
+			"The scene context packet carries wikiReferences (corpus matches) per Q21 — draft with the cited templates' beats as the default rhythm.",
 			"After drafting, the canonical workflow continues to Continuity validation (Phase 5+).",
 		],
 	},
 	delegate_to_planner: {
 		label: "Planner",
 		description:
-			"Generate a chapter plan. Reads novel state, calls the LLM, parses the YAML plan, writes it back to chapter frontmatter, transitions status → planned.",
-		promptSnippet: "Generate a chapter plan from novel state.",
+			"Generate a chapter plan. Reads novel state, calls the LLM, parses the YAML plan, writes it back to chapter frontmatter, transitions status → planned. With `chapters=N` (1–8), batches N successive plans in one LLM call (ADR-0009).",
+		promptSnippet: "Generate a chapter plan from novel state (batch up to 8 via chapters param).",
 		promptGuidelines: [
 			"Use delegate_to_planner when the user asks to plan a chapter (route plan_chapter).",
-			"Output ONLY a YAML plan block — no preamble, no commentary.",
+			"Pass `chapters=N` (1–8) when the user requests a batch (e.g. /novel plan 5). N=1 is the default and preserves single-chapter behavior.",
+			"Output ONLY a YAML plan block — single object for N=1 or `chapters: [{plan}, ...]` for N>1.",
+			"Plans MUST cite corpus templates via template_refs (or an explicit exemption) — the packet's wikiReferences are the candidates (Q22 / ADR-0008).",
 			"After the plan is written, the user reviews it; only then does /novel write invoke delegate_to_writer.",
 		],
 	},
 	delegate_to_critic: {
 		label: "Critic",
 		description:
-			"Review a chapter. Issues are segmented by `category` (story / character / pacing / prose / foreshadowing / continuity-issue / other) with severity (blocker / high / medium / low / praise). Output written to chapter frontmatter `review:` field.",
+			"Review a chapter. Issues are segmented by `category` (story / character / pacing / prose / foreshadowing / continuity-issue / other) with severity (blocker / high / medium / low / praise) and an optional `pattern_ref` grounding the issue in a writing_patterns row. Output written to chapter frontmatter `review:` field.",
 		promptSnippet: "Review a chapter and emit categorized issues.",
 		promptGuidelines: [
 			"Use delegate_to_critic when the user asks for review, critique, or feedback on a chapter (route review_chapter).",
 			"Always set chapter_id so the Critic knows which chapter to read.",
+			"The review packet carries wikiReferences (writing_patterns matches) — ground issues with pattern_ref when one applies (ADR-0008 §4).",
 			"Output ONLY a YAML review block — no preamble, no commentary.",
 		],
 	},
@@ -131,4 +135,14 @@ export const ERROR_MESSAGES_EN = {
 		`${agent}: LLM output had no \`\`\`yaml fenced review block.`,
 	route_no_match: (input: string) =>
 		`run_director: no route matched input "${input.slice(0, 60)}" and LLM fallback is not yet wired (Phase 3+). Add a fallback route to config/route.yaml or wire the LLM classifier.`,
+	plan_missing_template_refs: (agent: string) =>
+		`${agent}: plan cites no template_refs and carries no explicit exemption. Cite corpus templates (template_refs) or set template_refs_exempt: true with template_refs_exempt_rationale (Q22 / ADR-0008).`,
+	plan_no_chapters_to_plan:
+		"delegate_to_planner (batch): no writable chapters found in chapters/ — nothing to plan. Check the anchor and ensure at least one chapter is in non-terminal status.",
+	plan_block_validation_failed:
+		"delegate_to_planner (batch): one or more plan blocks failed validation (missing template_refs or malformed). Successful plans were written; failed chapters were left untouched. Re-run with a smaller `chapters` count to retry just the failed ones.",
+	wiki_packet_degraded: (reason: string) =>
+		`wiki references unavailable for this packet (writing proceeds without them): ${reason}`,
+	wiki_rerank_budget:
+		"wiki rerank budget exhausted for this packet assembly — falling back to BM25 order.",
 } as const

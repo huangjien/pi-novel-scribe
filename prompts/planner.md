@@ -21,13 +21,21 @@ no plan yet.
 - Current major arc + active storyline state (`story/story-lines/`)
 - Relevant character profiles (`characters/<id>/profile.yaml`)
 - Chapter index (which chapter is being planned)
+- **wikiReferences** (Q21 / ADR-0008): scene templates + story-line
+  structures matched to this novel's lines and roster — the citation
+  candidates for `template_refs`
 
 ## Procedure
 1. Resolve the chapter index — chapter with no `plan` frontmatter yet, or next chronological gap.
 2. Load the chapter's containing arc goals + active story lines.
-3. Emit plan as chapter frontmatter (`plan:` block) + scene markers.
-4. Per scene, emit only authored fields: `id, pov, location, time, participants, purpose, conflict, turn, advances_lines`.
-5. Tag provisional plans: `plan_status: provisional` if author hasn't reviewed yet.
+3. Read `wikiReferences` — select the templates this plan actually uses.
+4. Emit plan as chapter frontmatter (`plan:` block) + scene markers.
+5. Per scene, emit only authored fields: `id, pov, location, time, participants, purpose, conflict, turn, advances_lines, template_refs`.
+6. Cite corpus templates per scene (or at plan level):
+   `template_refs: [{ table: scene_templates, id: "<wiki id>", how_used: "<one sentence>" }]`.
+   A plan with zero citations MUST carry
+   `template_refs_exempt: true` + `template_refs_exempt_rationale` (Q22).
+7. Tag provisional plans: `plan_status: provisional` if author hasn't reviewed yet.
 
 ## Output
 ```yaml

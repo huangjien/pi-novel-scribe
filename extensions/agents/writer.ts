@@ -24,6 +24,12 @@ import {
 } from "../i18n/index.ts"
 import { loadAgentPrompt } from "../i18n/prompts.ts"
 import { composeSceneContext, isDraftable } from "../novel/context.ts"
+import {
+	injectWikiReferences,
+	validateTemplateRefs,
+	WRITER_TABLES,
+	writerWikiQuery,
+} from "../wiki/context.ts"
 import { applyStatus } from "../workflow/status.ts"
 
 export function registerWriterAgent(pi: ExtensionAPI): void {
@@ -71,28 +77,30 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 				flag: p.language,
 				chapterPath: chapterArg,
 			})
+
+			if (Object.keys(scene.plan).length > 0) {
+				enforcePlanTemplateRefs(lang, scene.plan)
+			}
+
+			const wiki = await injectWikiReferences(ctx, writerWikiQuery(scene), {
+				tables: WRITER_TABLES,
+				language: lang,
+			})
+
 			const promptBody = loadAgentPrompt("writer", lang)
-			const userMessage = [
-				`Working language: ${lang}`,
-				"Scene context (deterministic, Q7):",
-				"```",
-				JSON.stringify(
-					{
-						chapterPath: scene.chapterPath,
-						chapterNumber: scene.chapterNumber,
-						pov: scene.pov,
-						plan: scene.plan,
-						characterProfile: scene.characterProfile,
-					},
-					null,
-					2,
-				),
-				"```",
-				p.input ? `\nUser note: ${p.input}` : "",
-				lang === "zh"
-					? "\n请用中文撰写本章节正文，使用 @scene 标记划分场景。仅输出正文。"
-					: "\nWrite the chapter prose now. Use @scene markers to delineate scenes. Output ONLY prose.",
-			].join("\n")
+			const userMessage = buildWriterUserMessage(
+				{
+					chapterPath: scene.chapterPath,
+					chapterNumber: scene.chapterNumber,
+					pov: scene.pov,
+					plan: scene.plan,
+					characterProfile: scene.characterProfile,
+					wikiReferences: wiki.wikiReferences,
+				},
+				wiki.wikiWarning,
+				p.input,
+				lang,
+			)
 
 			const result = await ctx.modelRegistry.complete(
 				ctx.model,
@@ -131,6 +139,8 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 					wordCount,
 					pov: scene.pov,
 					language: lang,
+					wikiPicks: wiki.wikiReferences ? wiki.wikiReferences.picks.length : 0,
+					wikiDegraded: wiki.wikiReferences === null,
 				},
 			}
 		},
@@ -139,3 +149,41 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 
 // Re-export so loader paths work even though we already use registerWriterAgent above.
 export { isDraftable }
+
+interface WriterPacket {
+	readonly chapterPath: string
+	readonly chapterNumber: number | null
+	readonly pov: string | null
+	readonly plan: Record<string, unknown>
+	readonly characterProfile: string | null
+	readonly wikiReferences: unknown
+}
+
+function enforcePlanTemplateRefs(lang: Language, plan: Record<string, unknown>): void {
+	const check = validateTemplateRefs(plan)
+	if (!check.valid) {
+		localizedError(lang, "plan_missing_template_refs", "delegate_to_writer")
+	}
+}
+
+function buildWriterUserMessage(
+	packet: WriterPacket,
+	wikiWarning: string | null,
+	userNote: string | undefined,
+	lang: Language,
+): string {
+	const closing =
+		lang === "zh"
+			? "\n请用中文撰写本章节正文，使用 @scene 标记划分场景。仅输出正文。"
+			: "\nWrite the chapter prose now. Use @scene markers to delineate scenes. Output ONLY prose."
+	return [
+		`Working language: ${lang}`,
+		"Scene context (deterministic, Q7 + Q21):",
+		"```",
+		JSON.stringify(packet, null, 2),
+		"```",
+		wikiWarning ? `\nWarning: ${wikiWarning}` : "",
+		userNote ? `\nUser note: ${userNote}` : "",
+		closing,
+	].join("\n")
+}

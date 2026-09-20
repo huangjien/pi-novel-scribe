@@ -14,6 +14,14 @@ let tmpDir = ""
 beforeEach(() => {
 	tmpDir = join(tmpdir(), `planner-tool-${Date.now()}-${Math.random().toString(36).slice(2)}`)
 	mkdirSync(tmpDir, { recursive: true })
+	// Deliberately missing wiki DB → packet wiki injection takes the ADR-0008 degradation path (offline, hermetic).
+	const piDir = join(tmpDir, ".pi")
+	mkdirSync(piDir, { recursive: true })
+	writeFileSync(
+		join(piDir, "settings.json"),
+		JSON.stringify({ wikiDbPath: join(tmpDir, "no-wiki.db") }),
+		"utf8",
+	)
 })
 
 afterEach(() => {
@@ -38,7 +46,7 @@ describe("delegate_to_planner tool wrapper", () => {
 			content: [
 				{
 					type: "text",
-					text: "Here's the plan:\n```yaml\nid: opening\npov: sara\nbeats:\n  - setup\n  - escalation\n```\nDone.",
+					text: 'Here\'s the plan:\n```yaml\nid: opening\npov: sara\nbeats:\n  - setup\n  - escalation\ntemplate_refs:\n  - { table: scene_templates, id: "st-001", how_used: "opening beat skeleton" }\n```\nDone.',
 				},
 			],
 		})
@@ -63,12 +71,70 @@ describe("delegate_to_planner tool wrapper", () => {
 			id: "opening",
 			pov: "sara",
 			beats: ["setup", "escalation"],
+			template_refs: [
+				{ table: "scene_templates", id: "st-001", how_used: "opening beat skeleton" },
+			],
 		})
 		expect(result.content[0]?.text).toContain("Planned")
 
 		const updated = readFileSync(chapterPath, "utf8")
 		expect(updated).toContain("plan:")
 		expect(updated).toMatch(/status:\s*"?planned"?/)
+	})
+
+	it("rejects a plan that cites no template_refs and carries no exemption (Q22)", async () => {
+		const pi = makeFakePi()
+		registerPlannerAgent(pi)
+		const chapterPath = join(tmpDir, "0003.md")
+		writeFileSync(chapterPath, `---\nchapter: 3\nstatus: planned\n---\n\nBody.`, "utf8")
+
+		const complete = vi.fn().mockResolvedValue({
+			content: [
+				{
+					type: "text",
+					text: "```yaml\nid: opening\npov: sara\nbeats:\n  - setup\n```",
+				},
+			],
+		})
+		const ctx = makeFakeCtx({
+			cwd: tmpDir,
+			model: { id: "test-model" },
+			modelRegistry: { complete },
+		})
+		const tool = pi.get("delegate_to_planner")
+		await expect(
+			tool.execute("c", { chapter_id: chapterPath }, undefined, undefined, ctx),
+		).rejects.toThrow(/template_refs/i)
+	})
+
+	it("accepts a plan with an explicit exemption plus rationale", async () => {
+		const pi = makeFakePi()
+		registerPlannerAgent(pi)
+		const chapterPath = join(tmpDir, "0004.md")
+		writeFileSync(chapterPath, `---\nchapter: 4\nstatus: planned\n---\n\nBody.`, "utf8")
+
+		const complete = vi.fn().mockResolvedValue({
+			content: [
+				{
+					type: "text",
+					text: '```yaml\nid: opening\npov: sara\ntemplate_refs_exempt: true\ntemplate_refs_exempt_rationale: "corpus has no match for this dream-sequence chapter"\n```',
+				},
+			],
+		})
+		const ctx = makeFakeCtx({
+			cwd: tmpDir,
+			model: { id: "test-model" },
+			modelRegistry: { complete },
+		})
+		const tool = pi.get("delegate_to_planner")
+		const result = (await tool.execute(
+			"c",
+			{ chapter_id: chapterPath },
+			undefined,
+			undefined,
+			ctx,
+		)) as { details: { plan: Record<string, unknown> } }
+		expect(result.details.plan.template_refs_exempt).toBe(true)
 	})
 
 	it("throws when the LLM produces no yaml block", async () => {

@@ -12,6 +12,18 @@
  * arbitrary LLM output).
  */
 
+import type { WikiTable } from "../wiki/schema.ts"
+
+// ============================================================================
+// TEMPLATE REF (Q22 / ADR-0008 — plans must cite corpus templates)
+// ============================================================================
+
+export interface TemplateRef {
+	readonly table: WikiTable
+	readonly id: string
+	readonly how_used: string
+}
+
 // ============================================================================
 // CHARACTER
 // ============================================================================
@@ -53,6 +65,8 @@ export interface Scene {
 	readonly conflict: string | null
 	readonly turn: string | null
 	readonly advances_lines: readonly string[]
+	readonly template_refs?: readonly TemplateRef[]
+	readonly template_refs_exempt?: boolean
 }
 
 // ============================================================================

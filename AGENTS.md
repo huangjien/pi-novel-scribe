@@ -9,7 +9,7 @@
 - **Name:** pi-novel-scribe — Pi extension for autonomous long-form novel writing
 - **Runtime:** [Pi](https://github.com/earendil-works/pi) v0.85+ (Mario Zechner / badlogic)
 - **Language:** TypeScript (erasable syntax only — see [Conventions](#conventions))
-- **Status:** v0.1 milestone **complete** — `pi-novel-architecture-review.md` v0.4 with Q1–Q16 locked, all 7 implementation phases shipped (Phase 0.5 substrate → Phase 7 tmux UI sketch), 149/149 tests passing.
+- **Status:** v0.1+ **and v0.2 milestones complete** — `pi-novel-architecture-review.md` v0.4 with Q1–Q27 locked; all 12 implementation phases shipped across both milestones (Phase 0.5 substrate → Phase 12 sample novel + CI smoke); 280/280 tests passing. v0.3 not yet scoped.
 - **Primary principle:** Pi is the runtime; the extension provides novel-specific orchestration. The author remains the final authority on canon.
 
 ## Where to look
@@ -51,6 +51,25 @@ npm pack                                        # build tarball for `pi install 
 ```
 
 > `npm run check` (lint + typecheck) is the quality gate before marking work done; `npm test` is the regression gate. Both must be clean (exit 0) before any phase is marked complete.
+
+### Real-pi smoke against the sample novel
+
+The unit smoke (`tests/smoke.test.ts`) covers the mocked-LLM end-to-end path. For a real-LLM end-to-end smoke against `examples/novel-scribe-demo/` (mode (b) per the v0.2 planning), two project-local configs are required (both untracked — `.pi/` is gitignored):
+
+1. **Project-local `.pi/settings.json`** at the **project root** pointing `novelRepo` at the sample and `wikiDbPath` at a nonexistent file (forces the ADR-0008 degradation path). This file is smoke-only — delete after the smoke so it doesn't change the extension's default novelRepo resolution.
+2. **`.pi/extensions/pi-permission-system/config.json`** with the extension's tools (`delegate_to_planner`, `delegate_to_writer`, `delegate_to_critic`, `wiki_search`, `run_director`) set to `"allow"`. Without this, pi's permission system blocks tool calls in headless mode (no interactive UI). This file SHOULD stay — it's the natural permission config for future real-pi smoke runs.
+
+Then from the project root:
+
+```bash
+perl -e 'alarm 360; exec @ARGV' pi --provider MiniMax --model MiniMax-M3 \
+  -e ./extensions/index.ts \
+  -p "Call the delegate_to_writer tool now with chapter_id='0001.md' to draft the chapter."
+```
+
+The smoke produces real prose (mode (b) takes ~30–90s end-to-end with the MiniMax-M3 model), transitions the chapter's `status` to `human_editing`, and exercises the wiki degradation path (`wikiReferences: null` + warning, never blocks writing).
+
+**Latent finding worth flagging for v0.3 scoping:** the Writer's `writeFileSync` overwrites the chapter with prose-only — any pre-existing frontmatter fields (`chapter:`, `pov:`, `plan:`, `review:`) get wiped. `applyStatus` then adds `status:` back, but other fields are gone. The unit smoke hides this because the mock LLM never produces frontmatter lines. The fix would be to merge the new prose into the existing file rather than overwrite.
 
 ---
 
@@ -98,7 +117,7 @@ These are non-negotiable. Violating any of them breaks the system.
 
 ---
 
-## Layout (current — Phase 0–8 shipped)
+## Layout (current — Phase 0–10 shipped)
 
 ```
 pi-novel-scribe/
@@ -122,17 +141,20 @@ pi-novel-scribe/
 │   ├── wiki/                   # ADR-0006: schema.ts, db.ts (node:sqlite via createRequire),
 │   │                           #   fts.ts (FTS5 BM25 candidates), rerank.ts (LLM top-5),
 │   │                           #   index.ts (public searchWiki entry)
+│   │                           # ADR-0008: cache.ts (session-scoped in-memory rerank cache + budget),
+│   │                           #   context.ts (deterministic query derivation + packet injection + Q22 validation)
 │   └── tools/wiki-search.ts    # pi tool wrapper for the wiki
 │
 ├── config/route.yaml           # 9 intents (write, plan, review, revise, continue, inspect, investigate, approve, reject)
-├── prompts/                    # agent prompt templates (Markdown, loaded by Writer/Planner/Critic at runtime)
+├── prompts/                    # agent prompt templates (Markdown, en + zh, loaded by Writer/Planner/Critic at runtime)
 │
-├── tests/                      # 21 vitest spec files (205 tests, 82.64% statement coverage)
-│   └── _helpers/               # fakePi.ts (captures registered tools), fakeChild.ts (EventEmitter-based spawn)
+├── tests/                      # 28 vitest spec files (270 tests, 82.x% statement coverage)
+│   └── _helpers/               # fakePi.ts (captures registered tools), fakeChild.ts (EventEmitter-based spawn),
+│                               #   wikiFixture.ts (shared FTS5 SQLite fixture for wiki packet tests)
 │
 └── docs/
     ├── README.md               # doc index
-    ├── adr/                    # 6 ADRs (0001–0006)
+    ├── adr/                    # 8 ADRs (0001–0008)
     └── phase-7/README.md       # tmux UI stance + opt-in layout
 ```
 
@@ -211,7 +233,10 @@ The architecture review's §29 names the priority order. For Phase 0 (extension 
 - ✅ **Phase 7 — tmux UI** (optional tmux layout + `extensions/tmux/widget.ts` custom widget — works in plain pi without tmux; 7 widget tests)
 - ✅ **Phase 8 — LLM Wiki** (`extensions/wiki/` + `extensions/tools/wiki-search.ts`; read-only SQLite consumer of the wst NovelScribe reference corpus via `node:sqlite`; FTS5 BM25 → LLM rerank top 5; per ADR-0006; 21 tests)
 - ✅ **Phase 9 — Multilingual (en + zh)** (`extensions/i18n/` module + `prompts/zh/*.md`; localized tool descriptions / prompt snippets / status display / error messages; per ADR-0007; override chain = command flag > chapter frontmatter > settings > auto-detect > fallback; `/novel write --lang=zh`; 27 tests)
+- ✅ **Phase 10 — Wiki-first context** (per ADR-0008): `extensions/wiki/{cache,context}.ts` add deterministic packet-level injection (Q21) + session-scoped rerank cache + budget (Q23) + Q22 `template_refs` gate; `Scene.template_refs`/`template_refs_exempt` + Critic issue `pattern_ref`; agent prompts consume wikiReferences as the default rhythm; `requires_state` gate enforces Q22; degrades to `null + warning` on wiki failure (never blocks writing); 270/270 tests passing.
+- ✅ **Phase 11 — Multi-chapter planning** (per ADR-0009): `/novel plan --chapters=N` batches N successive plan writes into one LLM call; per-block validation isolates failures; Q22 `template_refs` gate runs per block; wiki packet computed once for the batch. 7 tests in `tests/multi-plan.test.ts`.
+- ✅ **Phase 12 — Sample novel + CI smoke** (per ADR-0010): `examples/novel-scribe-demo/` peer fixture (5 chapters, 2 characters, 2 story lines, 1 foreshadowing, 1 thread, 1 timeline event, no real `wikiDbPath`) + offscreen vitest smoke (`tests/smoke.test.ts`) driving the full vertical with mocked ModelRegistry. 3 tests. **Latent v0.1+ fix:** `extensions/workflow/status.ts` `parseSimpleYaml` + `serializeFrontmatter` rewrote with js-yaml so the writer's `applyStatus` no longer mangles the planner's object-valued `plan:` block.
 
-> **232/232 tests passing, 82.x% statement coverage.** See `.planning/STATE.md` for the phase-by-phase decision log, `docs/phase-7/README.md` for the tmux/UI stance, `docs/adr/0006-llm-wiki.md` for the wiki design contract, and `docs/adr/0007-multilingual.md` for the i18n design contract.
+> **280/280 tests passing, ~82.x% statement coverage.** See `.planning/STATE.md` for the phase-by-phase decision log, `docs/phase-7/README.md` for the tmux/UI stance, `docs/adr/0006-llm-wiki.md` for the wiki design contract, `docs/adr/0007-multilingual.md` for the i18n design contract, `docs/adr/0008-wiki-first-context.md` for the packet-level wiki injection design (amends ADR-0006 §6), `docs/adr/0009-multi-chapter-planning.md` for the multi-chapter scope/batching decisions, and `docs/adr/0010-sample-novel-and-ci-smoke.md` for the sample + offscreen smoke decisions.
 
 Track progress in a `STATE.md` once implementation begins.

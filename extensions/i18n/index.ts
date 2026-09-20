@@ -41,6 +41,11 @@ interface ErrorKeyTable {
 	editor_no_yaml_plan: (agent: string) => string
 	editor_no_yaml_review: (agent: string) => string
 	route_no_match: (input: string) => string
+	plan_missing_template_refs: (agent: string) => string
+	plan_no_chapters_to_plan: string
+	plan_block_validation_failed: string
+	wiki_packet_degraded: (reason: string) => string
+	wiki_rerank_budget: string
 }
 
 interface StringTables {

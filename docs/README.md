@@ -26,8 +26,12 @@ ADR directory: [`adr/`](./adr/)
 | [0005](./adr/0005-subagents-earned-not-declared.md) | Subagents earned, not declared | Q11 |
 | [0006](./adr/0006-llm-wiki.md) | LLM Wiki — cross-project SQLite reference corpus | Q17 + Q18 |
 | [0007](./adr/0007-multilingual.md) | Multilingual support (en + zh) | Q19 + Q20 |
+| [0008](./adr/0008-wiki-first-context.md) | Wiki-first context — corpus as mandatory prompt context | Q21 + Q22 + Q23 |
+| [0009](./adr/0009-multi-chapter-planning.md) | Multi-chapter planning — plan-only scope, one LLM call → N plan blocks | Q24 + Q25 |
+| [0010](./adr/0010-sample-novel-and-ci-smoke.md) | Sample novel + CI smoke — representative shape, offscreen vitest runner | Q26 + Q27 |
+| [0011](./adr/0011-multi-chapter-tool-param.md) | Multi-chapter `chapters` lives on the tool, not the route — clarifies ADR-0009 §Implementation impact | — (no new Q) |
 
-Seven issued, zero open. Every locked Q-decision traces to an ADR.
+Eleven issued, zero open. Every locked Q-decision traces to an ADR; ADR-0011 is the only clarification-only ADR (no new Q).
 
 ## Per-phase
 

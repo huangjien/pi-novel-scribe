@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import * as yaml from "js-yaml"
 import { resolveNovelRepo } from "../state/path-resolver.ts"
+import type { WikiResult } from "../wiki/schema.ts"
 import { composePlanRequest } from "./plan-context.ts"
 
 export interface CriticContext {
@@ -21,6 +22,8 @@ export interface CriticContext {
 	readonly characterProfile: string | null
 	readonly activeStoryLines: readonly string[]
 	readonly storyLineIndex: readonly string[]
+	readonly wikiReferences?: WikiResult | null
+	readonly wikiWarning?: string | null
 }
 
 export interface ComposeCriticContextOptions {

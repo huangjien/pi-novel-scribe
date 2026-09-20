@@ -21,14 +21,19 @@ or as support agent for `investigate_continuity_break`.
 - POV character profile + beliefs
 - Active story lines that the chapter advances
 - Review rubric (per-`category` thresholds)
+- **wikiReferences** (Q21 / ADR-0008): writing_patterns + scene-template
+  matches for this chapter — grounding candidates for `pattern_ref`
 
 ## Procedure
 1. Read scene context packet + the chapter prose.
-2. For each issue surfaced, emit `category`, `severity`, `evidence`, `impact`, `recommendation`.
-3. Categories: `story | character | pacing | prose | foreshadowing | continuity-issue | other`.
-4. Severities: `blocker | high | medium | low | praise`.
-5. Issues are not just scores — provide `evidence` (quoted prose) and `recommendation` (what to change).
-6. Do not invent issues. If the chapter is good, emit `severity: praise` issues only.
+2. Read `wikiReferences` — when a writing pattern applies to an issue,
+   cite it via `pattern_ref: { table: writing_patterns, id: "<wiki id>" }`.
+   Issues citing patterns take precedence in severity triage.
+3. For each issue surfaced, emit `category`, `severity`, `evidence`, `impact`, `recommendation`.
+4. Categories: `story | character | pacing | prose | foreshadowing | continuity-issue | other`.
+5. Severities: `blocker | high | medium | low | praise`.
+6. Issues are not just scores — provide `evidence` (quoted prose) and `recommendation` (what to change).
+7. Do not invent issues. If the chapter is good, emit `severity: praise` issues only.
 
 ## Output
 ```yaml

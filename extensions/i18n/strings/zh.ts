@@ -50,28 +50,32 @@ export const TOOL_STRINGS_ZH: Readonly<Record<string, ToolStrings>> = {
 		promptGuidelines: [
 			"仅当章节已有批准或临时计划时使用 delegate_to_writer。",
 			"始终设置 chapter_id（文件名或绝对路径）以便执笔者知道为哪个章节起草。",
+			"场景上下文数据包含有 wikiReferences（语料匹配，Q21）——以被引用模板的节拍作为默认节奏起草。",
 			"起草完成后，规范工作流继续进入连续性校验（第 5+ 阶段）。",
 		],
 	},
 	delegate_to_planner: {
 		label: "规划者",
 		description:
-			"生成章节计划。读取小说状态，调用 LLM，解析 YAML 计划，写回章节 frontmatter，将状态转移为 planned。",
-		promptSnippet: "从小说状态生成章节计划。",
+			"生成章节计划。读取小说状态，调用 LLM，解析 YAML 计划，写回章节 frontmatter，将状态转移为 planned。使用 `chapters=N`（1–8）可在一次 LLM 调用中批量规划 N 个连续章节（ADR-0009）。",
+		promptSnippet: "从小说状态生成章节计划（通过 chapters 参数一次最多批量 8 个）。",
 		promptGuidelines: [
 			"当用户要求规划章节时（路由 plan_chapter）使用 delegate_to_planner。",
-			"只输出 YAML 计划块——不要任何前言或解释。",
+			"用户请求批量时（如 /novel plan 5）传入 `chapters=N`（1–8）。N=1 为默认值，保留单章行为。",
+			"只输出 YAML 计划块——N=1 时为单个对象，N>1 时为 `chapters: [{plan}, ...]`。",
+			"计划必须通过 template_refs 引用语料库模板（或显式豁免）——数据包中的 wikiReferences 即候选（Q22 / ADR-0008）。",
 			"计划写入后，由用户审阅；只有经过审阅，/novel write 才会调用 delegate_to_writer。",
 		],
 	},
 	delegate_to_critic: {
 		label: "审阅者",
 		description:
-			"审阅一章。按 `category`（story / character / pacing / prose / foreshadowing / continuity-issue / other）和严重度（blocker / high / medium / low / praise）分段输出问题。输出写入章节 frontmatter 的 `review:` 字段。",
+			"审阅一章。按 `category`（story / character / pacing / prose / foreshadowing / continuity-issue / other）和严重度（blocker / high / medium / low / praise）分段输出问题，可选 `pattern_ref` 将问题锚定到 writing_patterns 条目。输出写入章节 frontmatter 的 `review:` 字段。",
 		promptSnippet: "审阅一章并按类别输出问题。",
 		promptGuidelines: [
 			"当用户要求审阅、批评或对一章提供反馈时（路由 review_chapter）使用 delegate_to_critic。",
 			"始终设置 chapter_id 以便审阅者知道审阅哪一章。",
+			"审阅数据包含有 wikiReferences（writing_patterns 匹配）—— applicable 时用 pattern_ref 为问题提供依据（ADR-0008 §4）。",
 			"只输出 YAML 审阅块——不要任何前言或解释。",
 		],
 	},
@@ -128,4 +132,13 @@ export const ERROR_MESSAGES_ZH = {
 	editor_no_yaml_review: (agent: string) => `${agent}：LLM 输出中没有 \`\`\`yaml 围栏的审阅块。`,
 	route_no_match: (input: string) =>
 		`run_director：没有路由匹配输入 "${input.slice(0, 60)}"，LLM 兜底尚未接入（第 3+ 阶段）。请在 config/route.yaml 中添加兜底路由，或接入 LLM 分类器。`,
+	plan_missing_template_refs: (agent: string) =>
+		`${agent}：计划未引用任何 template_refs，也没有显式豁免。请引用语料库模板（template_refs），或设置 template_refs_exempt: true 并填写 template_refs_exempt_rationale（Q22 / ADR-0008）。`,
+	plan_no_chapters_to_plan:
+		"delegate_to_planner（批量）：chapters/ 下未找到可规划的章节。请检查锚点并确保至少一个章节处于非终态。",
+	plan_block_validation_failed:
+		"delegate_to_planner（批量）：一个或多个计划块验证失败（缺少 template_refs 或结构不合法）。已写入成功的计划；失败的章节文件保持原状。请用更小的 chapters 数量重跑，仅重试失败的章节。",
+	wiki_packet_degraded: (reason: string) =>
+		`本数据包的维基参考不可用（写作将继续，不带参考模板）：${reason}`,
+	wiki_rerank_budget: "本数据包组装的维基重排预算已耗尽——回退为 BM25 排序。",
 } as const

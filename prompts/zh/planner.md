@@ -17,13 +17,20 @@ loaded_by: routes[*].primary = planner; also commands /novel plan
 - 当前主要弧线 + 活跃故事线状态（`story/story-lines/`）
 - 相关人物档案（`characters/<id>/profile.yaml`）
 - 章节索引（正在规划哪一章）
+- **wikiReferences**（Q21 / ADR-0008）：与本小说故事线和人物阵容
+  匹配的场景模板 + 故事线结构——`template_refs` 的引用候选
 
 ## 步骤
 1. 确定章节索引——还没有 `plan` frontmatter 的章节，或下一个时间顺序的空白。
 2. 加载该章节所属弧线的目标 + 活跃故事线。
-3. 将计划输出为章节 frontmatter（`plan:` 块）+ 场景标记（scene marker）。
-4. 每个场景只输出授权字段：`id, pov, location, time, participants, purpose, conflict, turn, advances_lines`。
-5. 临时计划必须标注：`plan_status: provisional`（若作者尚未审阅）。
+3. 阅读 `wikiReferences`——挑选本计划实际使用的模板。
+4. 将计划输出为章节 frontmatter（`plan:` 块）+ 场景标记（scene marker）。
+5. 每个场景只输出授权字段：`id, pov, location, time, participants, purpose, conflict, turn, advances_lines, template_refs`。
+6. 每场景引用语料库模板（或在计划层引用）：
+   `template_refs: [{ table: scene_templates, id: "<维基 id>", how_used: "<一句话说明>" }]`。
+   零引用的计划必须携带 `template_refs_exempt: true` +
+   `template_refs_exempt_rationale`（Q22）。
+7. 临时计划必须标注：`plan_status: provisional`（若作者尚未审阅）。
 
 ## 输出
 ```yaml

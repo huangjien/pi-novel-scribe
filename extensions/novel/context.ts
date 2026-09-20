@@ -18,6 +18,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { isAbsolute, join } from "node:path"
 import * as yaml from "js-yaml"
 import { resolveNovelRepo } from "../state/path-resolver.ts"
+import type { WikiResult } from "../wiki/schema.ts"
 
 export interface SceneContext {
 	readonly novelRepo: string
@@ -28,6 +29,8 @@ export interface SceneContext {
 	readonly pov: string | null
 	readonly characterProfile: string | null
 	readonly wordCountBefore: number
+	readonly wikiReferences?: WikiResult | null
+	readonly wikiWarning?: string | null
 }
 
 export interface ComposeContextOptions {

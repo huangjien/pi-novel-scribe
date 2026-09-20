@@ -74,8 +74,8 @@ routes:
         - continue drafting
     agents:
       primary: writer
-      support: [planner, continuity, wiki_search]   # wiki → reference templates (consumed by Writer before drafting)
-    requires_state: ["chapters.next_unapproved"]   # there must be a chapter to write
+      support: [planner, continuity, wiki_search]   # wiki refs are guaranteed in the packet (Q21/ADR-0008); wiki_search = ad-hoc lookups
+    requires_state: ["chapters.next_unapproved", "chapters.plan_template_refs"]
     transitions_status: [planned → writing → drafted → human_editing]
     priority: 100      # this is the headline workflow
 
@@ -91,9 +91,9 @@ routes:
         - design scenes
     agents:
       primary: planner
-      support: [wiki_search]    # fetch reference templates before drafting the plan
+      support: [wiki_search]    # packet carries wikiReferences (Q21); tool remains for ad-hoc lookups
     requires_state: ["chapters.planned_or_next"]
-    transitions_status: [planned → planned]   # no status change; planner writes plan
+    transitions_status: [planned → planned]   # no status change; planner writes plan (with mandatory template_refs, Q22)
     priority: 95
 
   - intent: review_chapter
@@ -108,7 +108,7 @@ routes:
         - what do you think of chapter
     agents:
       primary: critic
-      support: [continuity, wiki_search]    # wiki → prior-chapter templates for comparison; continuity → fact-check
+      support: [continuity, wiki_search]    # critic packet carries writing_patterns matches (Q21); tool = ad-hoc comparison
     requires_state: ["chapters.drafted_or_approved"]
     transitions_status: []    # review does not auto-advance; author decides
     priority: 90
@@ -125,7 +125,7 @@ routes:
         - apply review
     agents:
       primary: writer
-      support: [critic, continuity, wiki_search]   # writer drafts; critic + continuity check diff; wiki → reference templates
+      support: [critic, continuity, wiki_search]   # packet-level wiki refs (Q21); critic + continuity check diff; tool = ad-hoc
     requires_state: ["chapters.reviewed"]
     transitions_status: [drafted → drafted]
     priority: 88

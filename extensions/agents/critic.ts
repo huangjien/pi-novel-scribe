@@ -18,8 +18,15 @@ import {
 import { loadAgentPrompt } from "../i18n/prompts.ts"
 import { composeCriticContext } from "../novel/critic-context.ts"
 import { extractYamlBlock } from "../novel/yaml-extract.ts"
+import { CRITIC_TABLES, criticWikiQuery, injectWikiReferences } from "../wiki/context.ts"
+import { WIKI_TABLES } from "../wiki/schema.ts"
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)?([\s\S]*)$/
+
+export interface CriticPatternRef {
+	readonly table: (typeof WIKI_TABLES)[number]
+	readonly id: string
+}
 
 export interface CriticIssue {
 	readonly category: string
@@ -27,6 +34,7 @@ export interface CriticIssue {
 	readonly evidence: string
 	readonly impact: string
 	readonly recommendation: string
+	readonly pattern_ref?: CriticPatternRef | null
 }
 
 export interface CriticReview {
@@ -67,8 +75,18 @@ export function registerCriticAgent(pi: ExtensionAPI): void {
 				flag: p.language,
 				chapterPath: p.chapter_id,
 			})
+			const wiki = await injectWikiReferences(
+				ctx,
+				criticWikiQuery({ plan: ctxData.plan, pov: ctxData.pov }),
+				{ tables: CRITIC_TABLES, language: lang },
+			)
+			const ctxDataWithWiki = {
+				...ctxData,
+				wikiReferences: wiki.wikiReferences,
+				wikiWarning: wiki.wikiWarning,
+			}
 			const promptBody = loadAgentPrompt("critic", lang)
-			const userMessage = buildCriticUserMessage(ctxData, p.rubric, lang)
+			const userMessage = buildCriticUserMessage(ctxDataWithWiki, p.rubric, lang)
 
 			const result = await ctx.modelRegistry.complete(
 				ctx.model,
@@ -100,12 +118,26 @@ export function registerCriticAgent(pi: ExtensionAPI): void {
 	})
 }
 
+function coercePatternRef(raw: unknown): CriticPatternRef | null {
+	if (typeof raw !== "object" || raw === null) return null
+	const v = raw as { table?: unknown; id?: unknown }
+	if (
+		typeof v.table !== "string" ||
+		!(WIKI_TABLES as readonly string[]).includes(v.table) ||
+		typeof v.id !== "string" ||
+		v.id.trim().length === 0
+	) {
+		return null
+	}
+	return { table: v.table as CriticPatternRef["table"], id: v.id }
+}
+
 function extractIssues(raw: unknown): CriticIssue[] {
 	if (!Array.isArray(raw)) return []
 	const out: CriticIssue[] = []
 	for (const item of raw) {
 		if (typeof item !== "object" || item === null) continue
-		const v = item as Partial<CriticIssue>
+		const v = item as Partial<CriticIssue> & { pattern_ref?: unknown }
 		if (
 			typeof v.category === "string" &&
 			typeof v.severity === "string" &&
@@ -113,12 +145,14 @@ function extractIssues(raw: unknown): CriticIssue[] {
 			typeof v.impact === "string" &&
 			typeof v.recommendation === "string"
 		) {
+			const patternRef = coercePatternRef(v.pattern_ref)
 			out.push({
 				category: v.category,
 				severity: v.severity,
 				evidence: v.evidence,
 				impact: v.impact,
 				recommendation: v.recommendation,
+				...(patternRef ? { pattern_ref: patternRef } : {}),
 			})
 		}
 	}
@@ -157,6 +191,8 @@ interface CriticContextData {
 	readonly activeStoryLines: readonly unknown[]
 	readonly storyLineIndex: readonly unknown[]
 	readonly prose: string
+	readonly wikiReferences?: unknown
+	readonly wikiWarning?: string | null
 }
 
 function buildCriticUserMessage(
@@ -174,6 +210,7 @@ function buildCriticUserMessage(
 		"```",
 		JSON.stringify(ctxData, null, 2),
 		"```",
+		ctxData.wikiWarning ? `\nWarning: ${ctxData.wikiWarning}` : "",
 		rubric ? `\nRubric: ${rubric}\n` : "",
 		closing,
 	].join("\n")
@@ -208,7 +245,14 @@ function serializeFrontmatter(fm: Record<string, unknown>): string {
 	const lines = ["---"]
 	for (const [key, value] of Object.entries(fm)) {
 		if (value === undefined) continue
-		const rendered = value === null ? "null" : JSON.stringify(value)
+		const rendered =
+			value === null
+				? "null"
+				: typeof value === "object"
+					? yaml.dump(value, { lineWidth: -1, flowLevel: 0 }).trimEnd()
+					: typeof value === "string"
+						? JSON.stringify(value)
+						: String(value)
 		lines.push(`${key}: ${rendered}`)
 	}
 	lines.push("---")

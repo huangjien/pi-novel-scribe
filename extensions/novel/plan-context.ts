@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import * as yaml from "js-yaml"
 import { resolveNovelRepo } from "../state/path-resolver.ts"
+import type { WikiResult } from "../wiki/schema.ts"
 import { listApprovedChapters } from "./continuity.ts"
 
 export interface PlanRequest {
@@ -20,10 +21,34 @@ export interface PlanRequest {
 	readonly activeStoryLines: readonly string[]
 	readonly lastProseTail: string | null
 	readonly approvedChapterCount: number
+	readonly wikiReferences?: WikiResult | null
+	readonly wikiWarning?: string | null
 }
 
 export interface ComposePlanRequestOptions {
 	readonly chapterPath: string
+	readonly cwd: string
+}
+
+export interface BatchChapterEntry {
+	readonly chapterPath: string
+	readonly chapterNumber: number | null
+	readonly existingPlan: Record<string, unknown> | null
+}
+
+export interface BatchPlanRequest {
+	readonly novelRepo: string
+	readonly chapters: readonly BatchChapterEntry[]
+	readonly characterProfiles: Record<string, string>
+	readonly activeStoryLines: readonly string[]
+	readonly lastProseTail: string | null
+	readonly approvedChapterCount: number
+	readonly wikiReferences?: WikiResult | null
+	readonly wikiWarning?: string | null
+}
+
+export interface ComposeBatchPlanRequestOptions {
+	readonly chapterPaths: readonly string[]
 	readonly cwd: string
 }
 
@@ -126,5 +151,54 @@ function readdirSyncSafe(dir: string): readonly string[] {
 		return require("node:fs").readdirSync(dir) as string[]
 	} catch {
 		return []
+	}
+}
+
+/**
+ * Multi-chapter plan composer (ADR-0009 Q25). Resolves novel-wide state
+ * ONCE then walks N chapter files for per-chapter existingPlan only.
+ * Used when the planner batches N > 1 chapter plans in one LLM call.
+ */
+export function composeBatchPlanRequest(options: ComposeBatchPlanRequestOptions): BatchPlanRequest {
+	if (options.chapterPaths.length === 0) {
+		throw new Error("composeBatchPlanRequest: chapterPaths must contain at least one path")
+	}
+	const novelRepo = resolveNovelRepo(options.cwd).path
+	const characterProfiles = readCharacterProfiles(novelRepo)
+	const activeStoryLines = readActiveStoryLines(novelRepo)
+	const approvedChapterCount = listApprovedChapters(novelRepo).length
+
+	const chapters: BatchChapterEntry[] = []
+	let lastProseTail: string | null = null
+	for (const inputPath of options.chapterPaths) {
+		const chapterPath = inputPath.startsWith("/")
+			? inputPath
+			: join(novelRepo, "chapters", inputPath)
+		if (!existsSync(chapterPath)) {
+			throw new Error(`composeBatchPlanRequest: chapter file not found: ${chapterPath}`)
+		}
+		const raw = readFileSync(chapterPath, "utf8")
+		const { frontmatter } = parseYamlFrontmatter(raw)
+		chapters.push({
+			chapterPath,
+			chapterNumber:
+				typeof frontmatter.chapter === "number" ? (frontmatter.chapter as number) : null,
+			existingPlan:
+				typeof frontmatter.plan === "object" && frontmatter.plan !== null
+					? (frontmatter.plan as Record<string, unknown>)
+					: null,
+		})
+		if (lastProseTail === null) {
+			lastProseTail = readLastProseTail(novelRepo, chapterPath)
+		}
+	}
+
+	return {
+		novelRepo,
+		chapters,
+		characterProfiles,
+		activeStoryLines,
+		lastProseTail,
+		approvedChapterCount,
 	}
 }

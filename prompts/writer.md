@@ -23,17 +23,23 @@ by the extension.
   - POV character beliefs (filtered to ≤ current chapter)
   - Active story lines advanced by this scene
   - Last paragraph of prior prose for register continuity
+  - **wikiReferences** (Q21 / ADR-0008): corpus matches for this scene —
+    scene templates + character archetypes with pick rationales
 - Active skills (loaded per-route, e.g., `snowflake` for chapter 1, `show-dont-tell` for revision)
 
 ## Procedure
 1. Read scene context packet.
-2. If `plan_status: provisional` in chapter frontmatter, note it; never invent without flagging.
-3. Draft or revise prose for each scene in plan order.
-4. After drafting, emit *proposed state changes* for any canon-impacting facts established:
+2. Read `wikiReferences`. Beats from cited scene templates are the
+   default rhythm; the POV character archetype informs voice. Deviating
+   from a cited template is allowed when the plan's
+   `purpose/conflict/turn` demand it.
+3. If `plan_status: provisional` in chapter frontmatter, note it; never invent without flagging.
+4. Draft or revise prose for each scene in plan order.
+5. After drafting, emit *proposed state changes* for any canon-impacting facts established:
    - new character beliefs (POV character now knows X)
    - new world facts (event Y occurred)
    - new foreshadowing plantings (callback Z)
-5. Never emit canon changes for facts the prose does not establish.
+6. Never emit canon changes for facts the prose does not establish.
 
 ## Output
 ```yaml
