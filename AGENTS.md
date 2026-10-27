@@ -9,17 +9,17 @@
 - **Name:** pi-novel-scribe — Pi extension for autonomous long-form novel writing
 - **Runtime:** [Pi](https://github.com/earendil-works/pi) v0.85+ (Mario Zechner / badlogic)
 - **Language:** TypeScript (erasable syntax only — see [Conventions](#conventions))
-- **Status:** v0.1+, v0.2, and v0.3 milestones complete (14 implementation phases shipped); **v0.4 scoped** (Phase 15 prompt improvement — rewrite the 5 agent system prompts in `prompts/*.md` + `prompts/zh/*.md` to the structural template distilled from the wst SQLite `prompts` corpus; per ADR-0013 Q33). `pi-novel-architecture-review.md` v0.4 with Q1–Q38 locked; 282/282 tests passing (Phase 15 target = 283 with one structural-invariants test).
+- **Status:** v0.1, v0.2, v0.3, and v0.4 milestones complete (15 implementation phases shipped; v0.4 = Phase 15 prompt improvement per ADR-0013 Q33–Q38 — all 10 agent prompt files in `prompts/*.md` + `prompts/zh/*.md` rewritten to the wst structural template). `pi-novel-architecture-review.md` v0.4 with Q1–Q38 locked; 357/357 tests passing.
 - **Primary principle:** Pi is the runtime; the extension provides novel-specific orchestration. The author remains the final authority on canon.
 
 ## Where to look
 
-| Need | Read |
-|---|---|
-| **Design decisions, schemas, workflows, agent contracts** | [pi-novel-architecture-review.md](./pi-novel-architecture-review.md) — the spec |
-| **Pi extension API, events, tools, commands** | [pi docs: extensions](https://pi.dev/docs/extensions) · [packages](https://pi.dev/docs/packages) · [skills](https://pi.dev/docs/skills) |
-| **Global orchestrator** (Major + 7 specialists) | `~/.agents/AGENTS.md` |
-| **Global engineering rules** | `~/.copilot/copilot-instructions.md` |
+| Need                                                      | Read                                                                                                                                    |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Design decisions, schemas, workflows, agent contracts** | [pi-novel-architecture-review.md](./pi-novel-architecture-review.md) — the spec                                                         |
+| **Pi extension API, events, tools, commands**             | [pi docs: extensions](https://pi.dev/docs/extensions) · [packages](https://pi.dev/docs/packages) · [skills](https://pi.dev/docs/skills) |
+| **Global orchestrator** (Major + 7 specialists)           | `~/.agents/AGENTS.md`                                                                                                                   |
+| **Global engineering rules**                              | `~/.copilot/copilot-instructions.md`                                                                                                    |
 
 ---
 
@@ -69,8 +69,6 @@ perl -e 'alarm 360; exec @ARGV' pi --provider MiniMax --model MiniMax-M3 \
 
 The smoke produces real prose (mode (b) takes ~30–90s end-to-end with the MiniMax-M3 model), transitions the chapter's `status` to `human_editing`, and exercises the wiki degradation path (`wikiReferences: null` + warning, never blocks writing).
 
-**Latent finding worth flagging for v0.3 scoping:** the Writer's `writeFileSync` overwrites the chapter with prose-only — any pre-existing frontmatter fields (`chapter:`, `pov:`, `plan:`, `review:`) get wiped. `applyStatus` then adds `status:` back, but other fields are gone. The unit smoke hides this because the mock LLM never produces frontmatter lines. The fix would be to merge the new prose into the existing file rather than overwrite.
-
 ---
 
 ## Architecture (1-minute summary)
@@ -90,18 +88,18 @@ flowchart LR
     CU --> AP
 ```
 
-| Layer | Responsibility | Lives in |
-|---|---|---|
-| **Director** | Thin orchestrator — interprets intent, picks workflow, delegates | `extensions/agents/director.ts` |
-| **Planner** | Structure: premise → snowflake → arc → chapter → scene plans | `extensions/agents/planner.ts` |
-| **Writer** | Prose; emits `manuscript + proposed_state_changes` | `extensions/agents/writer.ts` |
-| **Critic** | Actionable issues: plot, character, pacing, prose, foreshadowing | `extensions/agents/critic.ts` |
-| **Continuity** | Canon authority: facts, timeline, character knowledge, threads | `extensions/agents/continuity.ts` |
-| **Subagents** | Narrow specialists (Snowflake Specialist, Scene Planner, Dialogue Specialist, Fact Checker, …) | `extensions/subagents/` |
-| **Skills** | Reusable writing methodologies loaded on demand | `skills/<name>/SKILL.md` |
-| **Novel State** | Durable canonical information (characters, world, story, chapters, foreshadowing) | The user's novel repo, not this one |
-| **External editor** | `$VISUAL` → `$EDITOR` → platform default; awaited, before/after diff | `extensions/editor/` |
-| **Workflows** | Resumable state machines exposed as slash commands | `extensions/workflow/` |
+| Layer               | Responsibility                                                                                 | Lives in                            |
+| ------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------- |
+| **Director**        | Thin orchestrator — interprets intent, picks workflow, delegates                               | `extensions/agents/director.ts`     |
+| **Planner**         | Structure: premise → snowflake → arc → chapter → scene plans                                   | `extensions/agents/planner.ts`      |
+| **Writer**          | Prose; emits `manuscript + proposed_state_changes`                                             | `extensions/agents/writer.ts`       |
+| **Critic**          | Actionable issues: plot, character, pacing, prose, foreshadowing                               | `extensions/agents/critic.ts`       |
+| **Continuity**      | Canon authority: facts, timeline, character knowledge, threads                                 | `extensions/agents/continuity.ts`   |
+| **Subagents**       | Narrow specialists (Snowflake Specialist, Scene Planner, Dialogue Specialist, Fact Checker, …) | `extensions/subagents/`             |
+| **Skills**          | Reusable writing methodologies loaded on demand                                                | `skills/<name>/SKILL.md`            |
+| **Novel State**     | Durable canonical information (characters, world, story, chapters, foreshadowing)              | The user's novel repo, not this one |
+| **External editor** | `$VISUAL` → `$EDITOR` → platform default; awaited, before/after diff                           | `extensions/editor/`                |
+| **Workflows**       | Resumable state machines exposed as slash commands                                             | `extensions/workflow/`              |
 
 Slash commands (MVP): `/novel plan`, `/novel write`, `/novel review`, `/novel revise`, `/novel continue`.
 
@@ -117,7 +115,7 @@ These are non-negotiable. Violating any of them breaks the system.
 
 ---
 
-## Layout (current — Phase 0–10 shipped)
+## Layout (current — v0.3 shipped)
 
 ```
 pi-novel-scribe/
@@ -148,13 +146,13 @@ pi-novel-scribe/
 ├── config/route.yaml           # 9 intents (write, plan, review, revise, continue, inspect, investigate, approve, reject)
 ├── prompts/                    # agent prompt templates (Markdown, en + zh, loaded by Writer/Planner/Critic at runtime)
 │
-├── tests/                      # 28 vitest spec files (270 tests, 82.x% statement coverage)
+├── tests/                      # 34 vitest spec files (357 tests)
 │   └── _helpers/               # fakePi.ts (captures registered tools), fakeChild.ts (EventEmitter-based spawn),
 │                               #   wikiFixture.ts (shared FTS5 SQLite fixture for wiki packet tests)
 │
 └── docs/
     ├── README.md               # doc index
-    ├── adr/                    # 8 ADRs (0001–0008)
+    ├── adr/                    # 13 ADRs (0001–0013)
     └── phase-7/README.md       # tmux UI stance + opt-in layout
 ```
 
@@ -208,37 +206,9 @@ These come from `~/.copilot/copilot-instructions.md` and apply unless this file 
 
 ---
 
-## Where to start (when implementing)
+## Project status
 
-The architecture review's §29 names the priority order. For Phase 0 (extension skeleton) this is the path of least resistance:
+- **Shipped (v0.1–v0.4, 15 phases):** design lock + substrate, 5 agents, workflow engine, tmux widget, LLM wiki (BM25 + embedding retrieval), i18n (en + zh), wiki-first context, multi-chapter planning, sample novel + CI smoke, writer frontmatter safety, embedding retrieval eval, prompt improvement (10 files → wst structural template). 357/357 tests passing. Full phase-by-phase log in [.planning/STATE.md](.planning/STATE.md).
+- **Pending (v0.5+, unscheduled):** wst `prompts` table ingestion, `lookup_wst_prompt` tool, soft-fallback semantics (ADR-0013 §6 / Q38).
 
-1. **Scaffold the package** — `package.json` with the `pi` manifest, `tsconfig.json` (strict, erasable), `biome.json`, `extensions/index.ts` that registers `/novel write` as a stub command.
-2. **Validate local loading** — `pi -e ./extensions/index.ts` from this repo. Confirm `session_start` fires and the command is visible.
-3. **Then tackle §29 in order.** Schemas (Novel State, Character Knowledge, Scene, Story Line) before agents. Agent contracts before implementations.
-
----
-
-## Project status (v0.1 milestone complete)
-
-- ✅ **Phase 0 — Design review complete** (`pi-novel-architecture-review.md` v0.4 + Q1–Q16 locked; CONTEXT.md; 5 ADRs)
-- ✅ **Phase 0.5 — Substrate scaffold** (npm scaffold, biome, tsconfig, `extensions/index.ts`, status state machine, editor primitive, path resolver)
-- ✅ **Phase 1 — External editor** (`extensions/editor/open.ts` + `gate.ts`; mtime-based decideOutcome)
-- ✅ **Phase 2 — Agent registry + Director route.yaml router** (5 agents + Director; `config/route.yaml` with 9 intents; matchRoute with phrase > keyword priority)
-- ✅ **Phase 3 — Writer end-to-end** (`extensions/agents/writer.ts`; composeSceneContext; writes `prose:` to chapter frontmatter)
-- ✅ **Phase 3.5 — Planner end-to-end** (`extensions/agents/planner.ts`; extractYamlBlock; writes `plan:` block)
-- ✅ **Phase 3.6 — Critic end-to-end** (`extensions/agents/critic.ts`; composeCriticContext; 5-field issue validation; writes `review:` block)
-- ✅ **Phase 4 — Continuity** (read-side: `extensions/novel/continuity.ts` derives reader/character knowledge; refresh mode writes `state/character-beliefs.yaml`)
-- ✅ **Phase 5 — Novel State** (P0 schemas: Character, Character Knowledge, Scene, StoryLine, Foreshadowing, UnresolvedThread, TimelineEvent, CanonChange; canon propose/apply/deprecate lifecycle)
-- ✅ **Phase 6 — Workflow engine** (13-edge transition graph, gate integration, `requires_state` checks, `canon_approve` tool, resume-on-exit scan)
-- ✅ **Phase 7 — tmux UI** (optional tmux layout + `extensions/tmux/widget.ts` custom widget — works in plain pi without tmux; 7 widget tests)
-- ✅ **Phase 8 — LLM Wiki** (`extensions/wiki/` + `extensions/tools/wiki-search.ts`; read-only SQLite consumer of the wst NovelScribe reference corpus via `node:sqlite`; FTS5 BM25 → LLM rerank top 5; per ADR-0006; 21 tests)
-- ✅ **Phase 9 — Multilingual (en + zh)** (`extensions/i18n/` module + `prompts/zh/*.md`; localized tool descriptions / prompt snippets / status display / error messages; per ADR-0007; override chain = command flag > chapter frontmatter > settings > auto-detect > fallback; `/novel write --lang=zh`; 27 tests)
-- ✅ **Phase 10 — Wiki-first context** (per ADR-0008): `extensions/wiki/{cache,context}.ts` add deterministic packet-level injection (Q21) + session-scoped rerank cache + budget (Q23) + Q22 `template_refs` gate; `Scene.template_refs`/`template_refs_exempt` + Critic issue `pattern_ref`; agent prompts consume wikiReferences as the default rhythm; `requires_state` gate enforces Q22; degrades to `null + warning` on wiki failure (never blocks writing); 270/270 tests passing.
-- ✅ **Phase 11 — Multi-chapter planning** (per ADR-0009): `/novel plan --chapters=N` batches N successive plan writes into one LLM call; per-block validation isolates failures; Q22 `template_refs` gate runs per block; wiki packet computed once for the batch. 7 tests in `tests/multi-plan.test.ts`.
-- ✅ **Phase 12 — Sample novel + CI smoke** (per ADR-0010): `examples/novel-scribe-demo/` peer fixture (5 chapters, 2 characters, 2 story lines, 1 foreshadowing, 1 thread, 1 timeline event, no real `wikiDbPath`) + offscreen vitest smoke (`tests/smoke.test.ts`) driving the full vertical with mocked ModelRegistry. 3 tests. **Latent v0.1+ fix:** `extensions/workflow/status.ts` `parseSimpleYaml` + `serializeFrontmatter` rewrote with js-yaml so the writer's `applyStatus` no longer mangles the planner's object-valued `plan:` block.
-- ✅ **Phase 13 — Writer frontmatter safety** (per ADR-0012 Q29, shipped 2026-09-20): the v0.2 real-pi smoke surfaced a latent bug — the Writer's `writeFileSync` overwrites the chapter with prose-only, wiping `chapter:` / `pov:` / `plan:` / `review:` frontmatter. Fix shipped: `mergeProseIntoChapter(chapterPath, prose, fsAdapter?)` helper in `extensions/workflow/status.ts` reuses the existing js-yaml frontmatter parser + serializer to preserve existing frontmatter and append LLM prose below `\n---`. `extensions/agents/writer.ts` calls the new helper instead of `writeFileSync`. New `tests/tool-writer.test.ts` case (`preserves pre-existing frontmatter ...`) seeds a chapter with all four frontmatter keys (simulating the v0.2 end-state) and asserts every key survives the writer call. +1 test (281 total).
-- ✅ **Phase 14 — Embedding retrieval evaluation** (per ADR-0012 Q30/Q31, shipped 2026-09-20): extended `tests/_helpers/wikiFixture.ts` with `seedEmbeddingEvalFixture()` populating the `embedding TEXT` column on 15 rows across 3 tables with deterministic 32-dim bag-of-hashes TF vectors (mirror of `extensions/wiki/vector.ts::textToVector`). New `extensions/wiki/vector.ts` (`vectorSearch` / `vectorSearchAll` + `textToVector` + `cosine`) — exports `snippetColumnFor` / `summaryColumnFor` / `languageColumnFor` from `extensions/wiki/fts.ts` to keep the per-table column map single-sourced. New `tests/embedding-eval.test.ts` runs both paths over a 15-query fixed ground truth. **Eval result:** BM25+LLM precision@1 = 0.867 (13/15); vector precision@1 = 0.933 (14/15) → **Q31 verdict: tie-or-better → MERGED.** `extensions/wiki/index.ts` now calls `ftsSearchAll` + `vectorSearchAll`, dedupes the union by `(table, id)` (FTS5 first), and sends the merged candidate set to the LLM rerank. +1 test (282 total).
-
-> **282/282 tests passing, ~82.x% statement coverage.** See `.planning/STATE.md` for the phase-by-phase decision log, `docs/phase-7/README.md` for the tmux/UI stance, `docs/adr/0006-llm-wiki.md` for the wiki design contract, `docs/adr/0007-multilingual.md` for the i18n design contract, `docs/adr/0008-wiki-first-context.md` for the packet-level wiki injection design (amends ADR-0006 §6), `docs/adr/0009-multi-chapter-planning.md` for the multi-chapter scope/batching decisions, `docs/adr/0010-sample-novel-and-ci-smoke.md` for the sample + offscreen smoke decisions, `docs/adr/0011-multi-chapter-tool-param.md` for the tool-parameter clarification, `docs/adr/0012-v0-3-writer-safety-and-embedding-eval.md` for the v0.3 writer-safety + embedding-eval scope (Q28–Q32, Accepted; Phase 13 + Phase 14 shipped), and `docs/adr/0013-v0-4-prompt-improvement.md` for the v0.4 prompt-improvement scope (Q33–Q38, Accepted; Phase 15 pending).
-
-Track progress in a `STATE.md` once implementation begins.
+> **Design contracts:** `docs/adr/0006-llm-wiki.md` (wiki), `docs/adr/0007-multilingual.md` (i18n), `docs/adr/0008-wiki-first-context.md` (packet injection, amends ADR-0006 §6), `docs/adr/0009-multi-chapter-planning.md` (batch planning), `docs/adr/0010-sample-novel-and-ci-smoke.md` (sample + offscreen smoke), `docs/adr/0011-multi-chapter-tool-param.md` (tool param), `docs/adr/0012-v0-3-writer-safety-and-embedding-eval.md` (v0.3, Q28–Q32), `docs/adr/0013-v0-4-prompt-improvement.md` (v0.4 scope, Q33–Q38), `docs/phase-7/README.md` (tmux/UI stance).

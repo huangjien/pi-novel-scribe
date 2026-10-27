@@ -17,7 +17,7 @@
 所治理的智能体流水线**来解决。人类作者是正典的最终权威；智能体只负责提议、验证
 和起草 —— 从不单独做决定。
 
-**关键架构分离：***扩展仓库*（本代码 —— 无状态、可复用）与*小说仓库*（一个对等的
+**关键架构分离：**_扩展仓库_（本代码 —— 无状态、可复用）与*小说仓库*（一个对等的
 git 仓库，存放某一部的全部正文、角色、世界观、正典状态）严格分离。一次扩展安装可
 服务 N 部小说。（ADR-0001）
 
@@ -34,13 +34,13 @@ flowchart LR
     U --> F[作者审批]
 ```
 
-| 智能体 | 职责 | 产出的制品 |
-|---|---|---|
-| **Director** | 薄路由层。将用户意图与 `config/route.yaml`（9 个意图）匹配，再分派给各智能体。自己从不写正文、不写正典逻辑 | 路由决策 |
-| **Planner** | 结构规划：前提 → 雪花法 → 弧 → 章节 → 场景计划 | 章节 frontmatter 中的 `plan:` 块 |
-| **Writer** | 正文起草，消费已批准的计划 | 章节中的 `prose:` + `proposed_state_changes` |
-| **Critic** | 可执行的批评意见，按类别分段：故事 / 角色 / 节奏 / 文笔 / 伏笔 | 带五字段问题的 `review:` 块 |
-| **Continuity** | 正典权威：验证 Writer 的提议、派生角色/读者知识、刷新信念 | `state/character-beliefs.yaml` |
+| 智能体         | 职责                                                                                                       | 产出的制品                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| **Director**   | 薄路由层。将用户意图与 `config/route.yaml`（9 个意图）匹配，再分派给各智能体。自己从不写正文、不写正典逻辑 | 路由决策                                     |
+| **Planner**    | 结构规划：前提 → 雪花法 → 弧 → 章节 → 场景计划                                                             | 章节 frontmatter 中的 `plan:` 块             |
+| **Writer**     | 正文起草，消费已批准的计划                                                                                 | 章节中的 `prose:` + `proposed_state_changes` |
+| **Critic**     | 可执行的批评意见，按类别分段：故事 / 角色 / 节奏 / 文笔 / 伏笔                                             | 带五字段问题的 `review:` 块                  |
+| **Continuity** | 正典权威：验证 Writer 的提议、派生角色/读者知识、刷新信念                                                  | `state/character-beliefs.yaml`               |
 
 每个智能体拿到的都是一个**确定性组装的场景上下文包**（scene-context packet：章节
 计划、场景计划、POV 角色的档案与"≤ 当前章节"过滤后的信念、活跃故事线、上一段正
@@ -53,7 +53,7 @@ flowchart LR
 
 **三层知识模型** —— 为悬疑与不可靠叙述者而设计：
 
-1. **世界真相**（`state/world-truth.yaml`）—— 仅由作者撰写。无论谁知道，*实际上*
+1. **世界真相**（`state/world-truth.yaml`）—— 仅由作者撰写。无论谁知道，_实际上_
    为真的是什么
 2. **角色知识** —— 默认由 POV 派生："Sara 知道 X"，因为某个 Sara 持有 POV 的场景
    陈述了它。作者通过 `state/character-beliefs.yaml` 覆盖，以处理不可靠叙述
@@ -140,16 +140,16 @@ stateDiagram-v2
 
 `config/route.yaml` 定义了 9 个意图，各带关键词/短语触发器与优先级：
 
-| 意图 | 优先级 | 主智能体 | 备注 |
-|---|---|---|---|
-| `approve_pending_change` / `reject_pending_change` | 200 | director | 审批响应永远压过新工作 |
-| `write_chapter` | 100 | writer | 头牌工作流 `/novel write` |
-| `plan_chapter` | 95 | planner | `/novel plan` |
-| `review_chapter` | 90 | critic | `/novel review`；从不自动推进状态 |
-| `revise_chapter` | 88 | writer | `/novel revise`；落实评审问题 |
-| `continue_novel` | 80 | planner | `/novel continue`；从上次中断处恢复 |
-| `inspect_novel_state` | 70 | continuity | 保证只读 |
-| `investigate_continuity_break` | 65 | continuity | 诊断疑似矛盾 |
+| 意图                                               | 优先级 | 主智能体   | 备注                                |
+| -------------------------------------------------- | ------ | ---------- | ----------------------------------- |
+| `approve_pending_change` / `reject_pending_change` | 200    | director   | 审批响应永远压过新工作              |
+| `write_chapter`                                    | 100    | writer     | 头牌工作流 `/novel write`           |
+| `plan_chapter`                                     | 95     | planner    | `/novel plan`                       |
+| `review_chapter`                                   | 90     | critic     | `/novel review`；从不自动推进状态   |
+| `revise_chapter`                                   | 88     | writer     | `/novel revise`；落实评审问题       |
+| `continue_novel`                                   | 80     | planner    | `/novel continue`；从上次中断处恢复 |
+| `inspect_novel_state`                              | 70     | continuity | 保证只读                            |
+| `investigate_continuity_break`                     | 65     | continuity | 诊断疑似矛盾                        |
 
 未匹配的输入 → Director 只问一个澄清性问题。显式的 `/novel <cmd>` 永远优先于关键
 词匹配。路由可携带 `requires_state` 前置门（例如 `write_chapter` 分派前必须存在下一
@@ -189,13 +189,13 @@ v0.1 里程碑**已完成**：全部 9 个阶段交付（基底 → 编辑器 �
 
 ## 阅读来源
 
-| 文件 | 作用 |
-|---|---|
-| `README.md`、`AGENTS.md` | 项目概览 + 约定 |
-| `CONTEXT.md` | 规范术语表 —— 16 项已锁定决策（Q1–Q16） |
-| `pi-novel-architecture-review.md` | 完整规格（v0.4） |
-| `config/route.yaml` | Director 路由表（9 个意图 + 审批路由） |
-| `extensions/novel/schemas.ts` | P0 领域模型（8 个实体） |
-| `extensions/novel/canon.ts` | 正典变更生命周期（提案 → 验证 → 应用） |
-| `extensions/workflow/transitions.ts` | 12 条边的工作流状态图 |
-| `docs/adr/0001–0007` | 决策记录（小说仓库分离、Director 路由器、子智能体、维基、i18n） |
+| 文件                                 | 作用                                                            |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `README.md`、`AGENTS.md`             | 项目概览 + 约定                                                 |
+| `CONTEXT.md`                         | 规范术语表 —— 16 项已锁定决策（Q1–Q16）                         |
+| `pi-novel-architecture-review.md`    | 完整规格（v0.4）                                                |
+| `config/route.yaml`                  | Director 路由表（9 个意图 + 审批路由）                          |
+| `extensions/novel/schemas.ts`        | P0 领域模型（8 个实体）                                         |
+| `extensions/novel/canon.ts`          | 正典变更生命周期（提案 → 验证 → 应用）                          |
+| `extensions/workflow/transitions.ts` | 12 条边的工作流状态图                                           |
+| `docs/adr/0001–0007`                 | 决策记录（小说仓库分离、Director 路由器、子智能体、维基、i18n） |

@@ -9,9 +9,9 @@
 The architecture review §26 specifies the MVP as "Agent Registry + Skill
 Loader + Basic Novel State + External Editor + /novel write" — five
 shipped pieces, several weeks of glue work before any chapter sees
-end-to-end prose. Per project engineering principles: *"Grow in working
+end-to-end prose. Per project engineering principles: _"Grow in working
 layers — start from the smallest version that works end to end, then
-add each new capability on top of a product that already works."*
+add each new capability on top of a product that already works."_
 
 We considered:
 

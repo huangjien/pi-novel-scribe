@@ -21,6 +21,13 @@ import {
 } from "../extensions/i18n/index.ts"
 import { countCjk, countLetters } from "../extensions/i18n/language.ts"
 import { readChapterFrontmatterLite, readLanguageSetting } from "../extensions/i18n/resolve.ts"
+import {
+	ERROR_MESSAGES_ZH,
+	HELP_TEXT_ZH,
+	STATUS_DISPLAY_ZH,
+	TOOL_STRINGS_ZH,
+} from "../extensions/i18n/strings/zh.ts"
+import { WORKFLOW_STATUSES } from "../extensions/workflow/status.ts"
 
 describe("language types", () => {
 	it("isLanguage accepts only en/zh", () => {
@@ -226,5 +233,76 @@ describe("errorMessage", () => {
 		expect(msg).toContain("/tmp/test.db")
 		const msgZh = errorMessage("zh", "wiki_db_missing", "/tmp/test.db")
 		expect(msgZh).toContain("/tmp/test.db")
+	})
+})
+
+describe("zh string tables (extensions/i18n/strings/zh.ts)", () => {
+	it("every registered tool has a complete zh entry with CJK content", () => {
+		const expectedTools = [
+			"wiki_search",
+			"run_director",
+			"delegate_to_writer",
+			"delegate_to_planner",
+			"delegate_to_critic",
+			"delegate_to_continuity",
+		]
+		expect(Object.keys(TOOL_STRINGS_ZH).sort()).toEqual([...expectedTools].sort())
+
+		for (const name of expectedTools) {
+			const entry = TOOL_STRINGS_ZH[name]
+			if (!entry) throw new Error(`missing zh entry for ${name}`)
+			expect(entry.label.length).toBeGreaterThan(0)
+			expect(entry.description.length).toBeGreaterThan(0)
+			expect(entry.promptSnippet.length).toBeGreaterThan(0)
+			expect(entry.promptGuidelines.length).toBeGreaterThan(0)
+			for (const g of entry.promptGuidelines) {
+				expect(g.length).toBeGreaterThan(0)
+			}
+			// Real localization, not a copy of the English keys.
+			expect(countCjk(entry.label)).toBeGreaterThan(0)
+			expect(countCjk(entry.description)).toBeGreaterThan(0)
+		}
+	})
+
+	it("tool names stay English where they are used (ADR-0007)", () => {
+		for (const [name, entry] of Object.entries(TOOL_STRINGS_ZH)) {
+			const mentionsName =
+				entry.description.includes(name) || entry.promptGuidelines.some((g) => g.includes(name))
+			expect(mentionsName, `${name} not referenced in its own zh strings`).toBe(true)
+		}
+	})
+
+	it("STATUS_DISPLAY_ZH covers exactly the workflow statuses", () => {
+		expect(Object.keys(STATUS_DISPLAY_ZH).sort()).toEqual([...WORKFLOW_STATUSES].sort())
+		for (const status of WORKFLOW_STATUSES) {
+			const display = STATUS_DISPLAY_ZH[status]
+			expect(display.length).toBeGreaterThan(0)
+			// Actual Chinese, not the English key echoed back.
+			expect(display).not.toBe(status)
+			expect(countCjk(display)).toBeGreaterThan(0)
+		}
+	})
+
+	it("HELP_TEXT_ZH lists the core commands and agent tools", () => {
+		expect(HELP_TEXT_ZH.length).toBeGreaterThan(0)
+		for (const token of ["/novel write", "/novel help", "delegate_to_writer", "wiki_search"]) {
+			expect(HELP_TEXT_ZH.includes(token), `help text missing "${token}"`).toBe(true)
+		}
+	})
+
+	it("ERROR_MESSAGES_ZH constants are non-empty; templates interpolate without leaking placeholders", () => {
+		for (const [key, value] of Object.entries(ERROR_MESSAGES_ZH)) {
+			if (typeof value === "function") {
+				const rendered =
+					value.length >= 2
+						? (value as (a: string, b: string) => string)("agentX", "approved")
+						: (value as (a: string) => string)("agentX")
+				expect(rendered.length, `${key} rendered empty`).toBeGreaterThan(0)
+				expect(rendered.includes("agentX"), `${key} did not interpolate`).toBe(true)
+				expect(rendered.includes("undefined"), `${key} leaked undefined`).toBe(false)
+			} else {
+				expect(String(value).length, `${key} empty`).toBeGreaterThan(0)
+			}
+		}
 	})
 })

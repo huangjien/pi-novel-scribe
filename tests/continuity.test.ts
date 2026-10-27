@@ -212,3 +212,94 @@ describe("findDivergences", () => {
 		expect(findDivergences(sandbox, 999)).toEqual([])
 	})
 })
+
+describe("continuity.ts — uncovered guards", () => {
+	it("parseScenesFromBody ignores an id-only marker when no pov follows it", () => {
+		// Q5 contract: load-bearing markers carry both id and pov. A marker
+		// with no pov anywhere after it cannot complete a match — it simply
+		// produces no scene rather than throwing.
+		expect(parseScenesFromBody("@scene id=orphan\n\nProse continues.")).toEqual([])
+	})
+
+	it("parseScenesFromBody parses multiple well-formed markers in order", () => {
+		const body = ["@scene id=s1 pov=sara", "Prose.", "@scene id=s2 pov=miguel"].join("\n")
+		expect(parseScenesFromBody(body)).toEqual([
+			{ id: "s1", pov: "sara" },
+			{ id: "s2", pov: "miguel" },
+		])
+	})
+
+	it("listApprovedChapters returns null chapter/language when frontmatter omits them", () => {
+		makeChapter("0001.md", "---\nstatus: approved\n---\n\n@scene id=a pov=sara\n\nBody text.")
+		const chapters = listApprovedChapters(sandbox)
+		expect(chapters).toHaveLength(1)
+		expect(chapters[0]?.chapterNumber).toBeNull()
+		expect(chapters[0]?.language).toBeNull()
+		expect(chapters[0]?.sceneIds).toEqual(["a"])
+	})
+
+	it("readCharacterBeliefs returns empty when the yaml is not an object", () => {
+		makeBeliefs("just a plain string\n")
+		expect(readCharacterBeliefs(sandbox)).toEqual({ characters: {} })
+	})
+
+	it("readCharacterBeliefs returns empty when the characters key is missing or not an object", () => {
+		makeBeliefs("status: v1\n")
+		expect(readCharacterBeliefs(sandbox)).toEqual({ characters: {} })
+		makeBeliefs("characters: not-an-object\n")
+		expect(readCharacterBeliefs(sandbox)).toEqual({ characters: {} })
+	})
+
+	it("readCharacterBeliefs skips non-object profiles and filters non-string beliefs", () => {
+		makeBeliefs(
+			[
+				"characters:",
+				"  sara:",
+				"    believes: [fact-a, 42, fact-b]",
+				"    authored_overrides: ghost",
+				"  miguel: just-a-string",
+			].join("\n"),
+		)
+		const parsed = readCharacterBeliefs(sandbox)
+		expect(Object.keys(parsed.characters).sort()).toEqual(["sara"])
+		expect(parsed.characters.sara?.believes).toEqual(["fact-a", "fact-b"])
+		expect(parsed.characters.sara?.authored_overrides).toEqual([])
+	})
+
+	it("readWorldTruth returns empty truths on malformed or non-object yaml", () => {
+		makeWorldTruth("\t- [unclosed")
+		expect(readWorldTruth(sandbox)).toEqual({ truths: [] })
+		makeWorldTruth("42\n")
+		expect(readWorldTruth(sandbox)).toEqual({ truths: [] })
+	})
+
+	it("readWorldTruth filters non-string entries", () => {
+		makeWorldTruth("truths:\n  - john_is_alive\n  - 7\n")
+		expect(readWorldTruth(sandbox).truths).toEqual(["john_is_alive"])
+	})
+
+	it("deriveReaderKnowledgeAt ignores approved chapters without a chapter number", () => {
+		makeChapter("0001.md", "---\nstatus: approved\n---\n\n@scene id=orphan pov=sara\n")
+		makeChapter("0002.md", "---\nchapter: 2\nstatus: approved\n---\n\n@scene id=f2 pov=sara\n")
+		expect(deriveReaderKnowledgeAt(sandbox, 10)).toEqual(["f2"])
+	})
+
+	it("findDivergences reports authored overrides with no derived evidence, carrying the chapter bound", () => {
+		makeChapter("0001.md", "---\nchapter: 1\nstatus: approved\n---\n\n@scene id=a pov=sara\n")
+		makeBeliefs("characters:\n  sara:\n    authored_overrides: [ghost-fact]\n")
+		const divergences = findDivergences(sandbox, 1)
+		expect(divergences).toHaveLength(1)
+		expect(divergences[0]).toMatchObject({
+			character: "sara",
+			belief: "ghost-fact",
+			type: "authored-no-derived",
+			at_chapter: 1,
+		})
+	})
+
+	it("findDivergences returns empty for characters with no authored overrides", () => {
+		makeChapter("0001.md", "---\nchapter: 1\nstatus: approved\n---\n\n@scene id=a pov=sara\n")
+		makeBeliefs("characters:\n  sara:\n    believes: [a]\n")
+		expect(findDivergences(sandbox)).toEqual([])
+	})
+})

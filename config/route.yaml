@@ -21,11 +21,11 @@ major_agent:
 
   # Things the Director handles directly (DO NOT delegate)
   handle_directly:
-    - greetings            # hi, hello, hey
-    - farewells            # bye, thanks
-    - identity_queries     # who are you, what can you do
-    - clarifications       # asking about a previous response
-    - meta_novel_scribe    # questions about this extension itself
+    - greetings # hi, hello, hey
+    - farewells # bye, thanks
+    - identity_queries # who are you, what can you do
+    - clarifications # asking about a previous response
+    - meta_novel_scribe # questions about this extension itself
 
 # ============================================================================
 # Sub-agent registry (per Q11: actual sub-agents come later; for now, agents)
@@ -34,7 +34,7 @@ major_agent:
 subagents:
   - id: director
     role: Routing + orchestration + workflow glue
-    tier: expensive        # needs context across novel state
+    tier: expensive # needs context across novel state
   - id: planner
     role: Premise → snowflake → arc → chapter → scene plans
     tier: balanced
@@ -61,7 +61,6 @@ subagents:
 # Order matters: earlier routes win on ties; priority breaks remaining ties.
 # ============================================================================
 routes:
-
   - intent: write_chapter
     description: "Draft a chapter (the canonical `/novel write` workflow)"
     triggers:
@@ -74,10 +73,10 @@ routes:
         - continue drafting
     agents:
       primary: writer
-      support: [planner, continuity, wiki_search]   # wiki refs are guaranteed in the packet (Q21/ADR-0008); wiki_search = ad-hoc lookups
+      support: [planner, continuity, wiki_search] # wiki refs are guaranteed in the packet (Q21/ADR-0008); wiki_search = ad-hoc lookups
     requires_state: ["chapters.next_unapproved", "chapters.plan_template_refs"]
     transitions_status: [planned → writing → drafted → human_editing]
-    priority: 100      # this is the headline workflow
+    priority: 100 # this is the headline workflow
 
   - intent: plan_chapter
     description: "Generate a chapter plan (the canonical `/novel plan` workflow)"
@@ -91,9 +90,9 @@ routes:
         - design scenes
     agents:
       primary: planner
-      support: [wiki_search]    # packet carries wikiReferences (Q21); tool remains for ad-hoc lookups
+      support: [wiki_search] # packet carries wikiReferences (Q21); tool remains for ad-hoc lookups
     requires_state: ["chapters.planned_or_next"]
-    transitions_status: [planned → planned]   # no status change; planner writes plan (with mandatory template_refs, Q22)
+    transitions_status: [planned → planned] # no status change; planner writes plan (with mandatory template_refs, Q22)
     priority: 95
 
   - intent: review_chapter
@@ -108,9 +107,9 @@ routes:
         - what do you think of chapter
     agents:
       primary: critic
-      support: [continuity, wiki_search]    # critic packet carries writing_patterns matches (Q21); tool = ad-hoc comparison
+      support: [continuity, wiki_search] # critic packet carries writing_patterns matches (Q21); tool = ad-hoc comparison
     requires_state: ["chapters.drafted_or_approved"]
-    transitions_status: []    # review does not auto-advance; author decides
+    transitions_status: [] # review does not auto-advance; author decides
     priority: 90
 
   - intent: revise_chapter
@@ -125,7 +124,7 @@ routes:
         - apply review
     agents:
       primary: writer
-      support: [critic, continuity, wiki_search]   # packet-level wiki refs (Q21); critic + continuity check diff; tool = ad-hoc
+      support: [critic, continuity, wiki_search] # packet-level wiki refs (Q21); critic + continuity check diff; tool = ad-hoc
     requires_state: ["chapters.reviewed"]
     transitions_status: [drafted → drafted]
     priority: 88
@@ -141,7 +140,7 @@ routes:
         - resume writing
     agents:
       primary: planner
-      support: [writer]      # planner decides; writer drafts if plan exists
+      support: [writer] # planner decides; writer drafts if plan exists
     requires_state: ["chapters.next_unapproved"]
     transitions_status: [planned → writing]
     priority: 80
@@ -158,10 +157,10 @@ routes:
         - who is in chapter
         - what is the current plan
     agents:
-      primary: continuity   # canonical authority for canonical facts
+      primary: continuity # canonical authority for canonical facts
       support: []
-    requires_state: []      # always allowed (read-only)
-    transitions_status: []  # never mutates state
+    requires_state: [] # always allowed (read-only)
+    transitions_status: [] # never mutates state
     priority: 70
 
   - intent: investigate_continuity_break
@@ -176,14 +175,14 @@ routes:
         - check continuity
     agents:
       primary: continuity
-      support: [critic]     # critic can read prose for evidence
+      support: [critic] # critic can read prose for evidence
     requires_state: []
     transitions_status: []
     priority: 65
 
-# ============================================================================
-# Approval-response routes (per Q8 — editor-as-approval-gate)
-# ============================================================================
+  # ============================================================================
+  # Approval-response routes (per Q8 — editor-as-approval-gate)
+  # ============================================================================
 
   - intent: approve_pending_change
     description: "Author approves a Level-2/3 editor-gated proposal"
@@ -195,11 +194,11 @@ routes:
         - yes do it
         - commit it
     agents:
-      primary: director       # just commit the pending proposal
+      primary: director # just commit the pending proposal
       support: []
     requires_state: ["workflow.pending_approval"]
-    transitions_status: []    # depends on the proposal; director routes internally
-    priority: 200             # approval responses win even over chapter writes
+    transitions_status: [] # depends on the proposal; director routes internally
+    priority: 200 # approval responses win even over chapter writes
 
   - intent: reject_pending_change
     description: "Author rejects a Level-2/3 editor-gated proposal"
@@ -225,8 +224,8 @@ fallback:
   intent: meta_novel_scribe
   description: "Could not confidently classify the request"
   agents:
-    primary: director          # safest default: Director asks one clarifying Q
-                                # OR reasons about which route best fits
+    primary: director # safest default: Director asks one clarifying Q
+      # OR reasons about which route best fits
   note: |
     Ask ONE clarifying question before delegating. If the user names a
     workflow explicitly ("/novel write"), honor that over keyword matching

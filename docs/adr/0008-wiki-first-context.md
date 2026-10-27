@@ -29,18 +29,18 @@ New pure function in `extensions/wiki/context.ts`:
 
 ```ts
 function composeWikiReferences(
-  querySources: WikiQuerySources,
-  options: { tables, topN, rerank, language },
-): Promise<WikiResult | null>   // null on db-missing / budget-exhausted, never throws
+	querySources: WikiQuerySources,
+	options: { tables; topN; rerank; language },
+): Promise<WikiResult | null> // null on db-missing / budget-exhausted, never throws
 ```
 
 Queries are **derived by the extension** from packet data — no LLM builds queries:
 
-| Packet | Query source (deterministic) | Tables |
-|---|---|---|
-| `PlanRequest` (Planner) | active story-line objectives + character roles + premise | `scene_templates`, `story_lines` |
-| `SceneContext` (Writer) | scene plan `purpose + conflict + advances_lines` kinds + POV role | `scene_templates`, `character_templates` |
-| `CriticContext` (Critic) | the plan's `template_refs` (Q22) + scene tone | `writing_patterns`, `scene_templates` |
+| Packet                   | Query source (deterministic)                                      | Tables                                   |
+| ------------------------ | ----------------------------------------------------------------- | ---------------------------------------- |
+| `PlanRequest` (Planner)  | active story-line objectives + character roles + premise          | `scene_templates`, `story_lines`         |
+| `SceneContext` (Writer)  | scene plan `purpose + conflict + advances_lines` kinds + POV role | `scene_templates`, `character_templates` |
+| `CriticContext` (Critic) | the plan's `template_refs` (Q22) + scene tone                     | `writing_patterns`, `scene_templates`    |
 
 Each composer gains a `wikiReferences: WikiResult | null` field. Q7 (deterministic
 composition) is preserved: query derivation is code; the single LLM rerank call
@@ -100,17 +100,17 @@ when one applies. Issues citing patterns take precedence in severity triage.
 
 ## Implementation impact (post-acceptance)
 
-| File | Change |
-|---|---|
-| `extensions/wiki/context.ts` | new — `composeWikiReferences` + query derivation |
-| `extensions/novel/{context,plan-context,critic-context}.ts` | + `wikiReferences` field |
-| `extensions/novel/schemas.ts` | Scene gains authored `template_refs`; Critic issue gains optional `pattern_ref` |
-| `extensions/agents/{planner,writer,critic}.ts` | validate/emit the new fields |
-| `prompts/{en,zh}/{planner,writer,critic}.md` | Reference-templates sections |
-| `extensions/i18n/strings/{en,zh}.ts` | new strings (degradation warning, budget notice) |
-| `config/route.yaml` | support-list comments updated (packet-level guarantee, tool = ad-hoc) |
-| `extensions/wiki/cache.ts` | new — session-scoped in-memory cache (no repo writes) |
-| tests | packet wiki injection, citation gate, cache hit/invalidation, degradation paths |
+| File                                                        | Change                                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `extensions/wiki/context.ts`                                | new — `composeWikiReferences` + query derivation                                |
+| `extensions/novel/{context,plan-context,critic-context}.ts` | + `wikiReferences` field                                                        |
+| `extensions/novel/schemas.ts`                               | Scene gains authored `template_refs`; Critic issue gains optional `pattern_ref` |
+| `extensions/agents/{planner,writer,critic}.ts`              | validate/emit the new fields                                                    |
+| `prompts/{en,zh}/{planner,writer,critic}.md`                | Reference-templates sections                                                    |
+| `extensions/i18n/strings/{en,zh}.ts`                        | new strings (degradation warning, budget notice)                                |
+| `config/route.yaml`                                         | support-list comments updated (packet-level guarantee, tool = ad-hoc)           |
+| `extensions/wiki/cache.ts`                                  | new — session-scoped in-memory cache (no repo writes)                           |
+| tests                                                       | packet wiki injection, citation gate, cache hit/invalidation, degradation paths |
 
 ## Consequences
 

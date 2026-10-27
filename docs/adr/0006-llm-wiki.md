@@ -41,10 +41,10 @@ Public surface (one entry):
 
 ```ts
 async function searchWiki(
-  ctx: ExtensionContext,
-  dbPath: string,
-  query: string,
-  options: { tables: WikiTable[]; topN: number; rerank: boolean },
+	ctx: ExtensionContext,
+	dbPath: string,
+	query: string,
+	options: { tables: WikiTable[]; topN: number; rerank: boolean },
 ): Promise<WikiResult>
 ```
 
@@ -81,8 +81,8 @@ Tool contract:
 
 ```json
 {
-  "novelRepo": "../my-novel",
-  "wikiDbPath": "/Users/huangjien/workspace/wst/novel_harness/data/snapshots/scribe-2026-08-07-authorconsole-restore.db"
+	"novelRepo": "../my-novel",
+	"wikiDbPath": "/Users/huangjien/workspace/wst/novel_harness/data/snapshots/scribe-2026-08-07-authorconsole-restore.db"
 }
 ```
 
@@ -101,7 +101,7 @@ Two-stage:
    rationale per pick.
 
 Per global rule 5 ("Do not use the LLM for deterministic logic"):
-reranking is **content judgment** (which template *thematically* matches
+reranking is **content judgment** (which template _thematically_ matches
 a query), not control flow. Approved.
 
 ### 5. Scope (per user pick)

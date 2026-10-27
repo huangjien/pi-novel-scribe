@@ -80,18 +80,18 @@ agent test), so it costs ~50ms extra in CI and is deterministic.
   intentionally exercises the degradation path to keep that branch
   covered.
 - The novel repo separation (ADR-0001) is unchanged — the sample is a
-  *peer* repo under `examples/`, not part of the extension's source.
+  _peer_ repo under `examples/`, not part of the extension's source.
 - The agent registry (ADR-0005) is unchanged — no new agents for
   the smoke; it drives existing tool entry points.
 
 ## Implementation impact
 
-| File | Change |
-|---|---|
+| File                          | Change                                                                                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `examples/novel-scribe-demo/` | new fixture (git-tracked): 5 chapter files, 2 character profiles, 2 story lines, foreshadowing/thread/timeline entries, `.pi/settings.json` |
-| `tests/smoke.test.ts` | new: end-to-end vertical smoke (write → review → approve) on `examples/novel-scribe-demo/`, mocked LLM |
-| `vitest.config.ts` | (optional) widen the test include glob if `examples/` is excluded; add an alias for the demo repo path |
-| `.gitignore` | (optional) ignore nothing in `examples/` — sample is source of truth for the smoke |
+| `tests/smoke.test.ts`         | new: end-to-end vertical smoke (write → review → approve) on `examples/novel-scribe-demo/`, mocked LLM                                      |
+| `vitest.config.ts`            | (optional) widen the test include glob if `examples/` is excluded; add an alias for the demo repo path                                      |
+| `.gitignore`                  | (optional) ignore nothing in `examples/` — sample is source of truth for the smoke                                                          |
 
 ## Consequences
 

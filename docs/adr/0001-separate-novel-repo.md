@@ -9,7 +9,7 @@
 We need to decide how pi-novel-scribe relates to the user's novel. Options
 considered:
 
-- **A. Single repo.** This extension's repo *is* the novel repo.
+- **A. Single repo.** This extension's repo _is_ the novel repo.
 - **B. Separate novel repo, configured path.** (Chosen.)
 - **C. Novel state lives in extension's `novels/<id>/`.**
 
@@ -59,7 +59,7 @@ pi-novel-scribe serves N novel repos, and each novel repo is independent.
 
 The implementation must:
 
-1. Read the novel repo path from `novelRepo` config *or* the
+1. Read the novel repo path from `novelRepo` config _or_ the
    `.pi/novel-state.yaml` marker.
 2. Refuse to write anywhere outside the resolved novel repo.
 3. Treat the novel repo's `.git/` as off-limits to the extension (no

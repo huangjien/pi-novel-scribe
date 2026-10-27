@@ -21,21 +21,21 @@ After v0.3, fifteen decisions were resolved through a grilling session. Each
 changed how this review is read. The table below lists every section that
 evolved and points at the matching decision in `CONTEXT.md` / `docs/adr/`.
 
-| Section | What changed in v0.4 | Decision |
-|---|---|---|
-| §5 Subagents | Pre-declared subagent list removed; subagents **earned by measured need**. Ship Critic as one LLM w/ `category` field; split out a Story Critic only when segmentation-by-prompt is provably the bottleneck. | Q11 |
-| §6 Skills | Skills live as multi-file `SKILL.md` (frontmatter + body per §6 fixed sections) + optional `scripts/` and `references/`. **On-demand loading** — only `description` in system prompt; body via `/skill:name`. | Q15 |
-| §7 Novel State | Novel data lives in a **separate novel repo**, identified via `novelRepo` config or `.pi/novel-state.yaml` marker. The extension is a tool, the novel is a peer project. | Q1 / ADR-0001 |
-| §8 Canon Model | **Prose-as-source, canon-as-derived.** Approved prose is append-only; any derivable fact (reader-knowledge, character-state-from-POV, etc.) is re-extractable. Authored state lives only where prose is awkward (planning, intentional commitments, pre-written facts). | Q2 / ADR-0002 |
-| §13 Three Information Layers | Reader knowledge is **purely derived** from approved prose. Character knowledge is POV-derived by default with `state/character-beliefs.yaml` overrides; world truth lives in `state/world-truth.yaml` for mysteries and unreliable narration. | Q3 |
-| §14 Human Editor | Editor is not just for prose; it's also the **approval gate** (see §15 below). Open authored artifact → save = approve/edit; no-change = approve-as-stated; no-save = rollback. | Q8 |
-| §15 Human Approval Levels | Level-2 / Level-3 gates open the relevant authored artifact in `$VISUAL` / `$EDITOR`. Save semantics drive the outcome. Level-1 = session log only. Level-0 = silent. | Q8 |
-| §17 Workflow Model | Workflows are **prompt-driven** with a **`config/route.yaml` routing table** (modeled on `~/.agents/route.yaml`). The Director LLM matches input → dispatches via route; LLM fallback for ambiguous input. The LLM picks which route / which agents / which order; the extension provides primitives + safety. | Q13, Q16 |
-| §18 Workflow State Machine | Canonical workflow `status` lives in **chapter frontmatter** (`status: planned \| writing \| drafted \| … \| canonized`). On `session_start`, the extension scans chapters for non-terminal statuses and offers to resume. `git log` + session.jsonl are audit-trail only. | Q9 |
-| §22 Cost and Recursion Controls | **Hybrid safety**: caps in Director prompt + **runtime guards at tool_call boundary**. Depth tracked via `ctx.sessionManager`. Tool calls exceeding caps return `isError: true` with "max_agent_depth exceeded". | Q14 |
-| §25 Finding D — Scene first-class | Scene schema split into **authored intent** (`id, pov, location, time, participants, purpose, conflict, turn, advances_lines`) and **derived facts** (`information_revealed, foreshadowing_planted, emotional_state, word_count, tone`). Planner LLM only emits plan-time fields. | Q12 |
-| §25 Finding E — Writer consumes approved plans | Reinforced: Writer never re-plans. Even provisional plans must be tagged as such. | Q1, Q2 |
-| §29 Priority list | Original ordering kept as roadmap of design decisions, **plus** Q1–Q16 resolved items now sit as architectural ground truth. New priority: substrate-first MVP (ADR-0003); route.yaml router (ADR-0004); subagents earned (ADR-0005). | ADR-0003, ADR-0004, ADR-0005 |
+| Section                                        | What changed in v0.4                                                                                                                                                                                                                                                                                           | Decision                     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| §5 Subagents                                   | Pre-declared subagent list removed; subagents **earned by measured need**. Ship Critic as one LLM w/ `category` field; split out a Story Critic only when segmentation-by-prompt is provably the bottleneck.                                                                                                   | Q11                          |
+| §6 Skills                                      | Skills live as multi-file `SKILL.md` (frontmatter + body per §6 fixed sections) + optional `scripts/` and `references/`. **On-demand loading** — only `description` in system prompt; body via `/skill:name`.                                                                                                  | Q15                          |
+| §7 Novel State                                 | Novel data lives in a **separate novel repo**, identified via `novelRepo` config or `.pi/novel-state.yaml` marker. The extension is a tool, the novel is a peer project.                                                                                                                                       | Q1 / ADR-0001                |
+| §8 Canon Model                                 | **Prose-as-source, canon-as-derived.** Approved prose is append-only; any derivable fact (reader-knowledge, character-state-from-POV, etc.) is re-extractable. Authored state lives only where prose is awkward (planning, intentional commitments, pre-written facts).                                        | Q2 / ADR-0002                |
+| §13 Three Information Layers                   | Reader knowledge is **purely derived** from approved prose. Character knowledge is POV-derived by default with `state/character-beliefs.yaml` overrides; world truth lives in `state/world-truth.yaml` for mysteries and unreliable narration.                                                                 | Q3                           |
+| §14 Human Editor                               | Editor is not just for prose; it's also the **approval gate** (see §15 below). Open authored artifact → save = approve/edit; no-change = approve-as-stated; no-save = rollback.                                                                                                                                | Q8                           |
+| §15 Human Approval Levels                      | Level-2 / Level-3 gates open the relevant authored artifact in `$VISUAL` / `$EDITOR`. Save semantics drive the outcome. Level-1 = session log only. Level-0 = silent.                                                                                                                                          | Q8                           |
+| §17 Workflow Model                             | Workflows are **prompt-driven** with a **`config/route.yaml` routing table** (modeled on `~/.agents/route.yaml`). The Director LLM matches input → dispatches via route; LLM fallback for ambiguous input. The LLM picks which route / which agents / which order; the extension provides primitives + safety. | Q13, Q16                     |
+| §18 Workflow State Machine                     | Canonical workflow `status` lives in **chapter frontmatter** (`status: planned \| writing \| drafted \| … \| canonized`). On `session_start`, the extension scans chapters for non-terminal statuses and offers to resume. `git log` + session.jsonl are audit-trail only.                                     | Q9                           |
+| §22 Cost and Recursion Controls                | **Hybrid safety**: caps in Director prompt + **runtime guards at tool_call boundary**. Depth tracked via `ctx.sessionManager`. Tool calls exceeding caps return `isError: true` with "max_agent_depth exceeded".                                                                                               | Q14                          |
+| §25 Finding D — Scene first-class              | Scene schema split into **authored intent** (`id, pov, location, time, participants, purpose, conflict, turn, advances_lines`) and **derived facts** (`information_revealed, foreshadowing_planted, emotional_state, word_count, tone`). Planner LLM only emits plan-time fields.                              | Q12                          |
+| §25 Finding E — Writer consumes approved plans | Reinforced: Writer never re-plans. Even provisional plans must be tagged as such.                                                                                                                                                                                                                              | Q1, Q2                       |
+| §29 Priority list                              | Original ordering kept as roadmap of design decisions, **plus** Q1–Q16 resolved items now sit as architectural ground truth. New priority: substrate-first MVP (ADR-0003); route.yaml router (ADR-0004); subagents earned (ADR-0005).                                                                          | ADR-0003, ADR-0004, ADR-0005 |
 
 Sections **not affected by v0.4** (preserved verbatim from v0.3): §1, §2, §3, §9, §10, §11, §12, §16, §19, §20, §21, §23, §24, §26, §27, §28. Where a v0.3 section's text is silent on a v0.4 concern, the `CONTEXT.md` glossary is the source of truth.
 
@@ -726,16 +726,16 @@ Level 3 — explicit approval
 
 Examples:
 
-| Operation | Level |
-|---|---:|
-| Read novel state | 0 |
-| Generate draft | 0 |
-| Generate review | 0 |
-| Open editor | 1 |
-| Proposed canon change | 2 |
-| Major storyline change | 3 |
-| Replace substantial existing prose | 3 |
-| Delete established canon | 3 |
+| Operation                          | Level |
+| ---------------------------------- | ----: |
+| Read novel state                   |     0 |
+| Generate draft                     |     0 |
+| Generate review                    |     0 |
+| Open editor                        |     1 |
+| Proposed canon change              |     2 |
+| Major storyline change             |     3 |
+| Replace substantial existing prose |     3 |
+| Delete established canon           |     3 |
 
 This should be configurable.
 
@@ -1530,8 +1530,7 @@ Before implementation, the next design session should focus on these items in or
 8. ✅ **Workflow definition format** — `config/route.yaml` + `matchRoute` (Q13+Q16 / ADR-0004)
 9. ✅ **Human approval protocol** — editor-as-gate with mtime-based `decideOutcome` (Q8)
 10. ✅ **Minimal Pi Extension implementation** — `extensions/index.ts` + 8 phases shipped
-9. **Human approval protocol**
-10. **Minimal Pi Extension implementation**
+11. **Human approval protocol**
+12. **Minimal Pi Extension implementation**
 
 These are more important than choosing the final folder structure or tmux layout.
-

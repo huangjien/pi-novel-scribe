@@ -9,9 +9,9 @@
 The architecture review §5 lists 9 subagents across the 5 agents
 (Planner: Snowflake Specialist, Arc Designer, Scene Planner; Writer:
 Dialogue Specialist, Description Specialist; Critic: Story/Character/
-Pacing/Prose; Continuity: Fact Checker). §5 itself adds: *"Subagents
+Pacing/Prose; Continuity: Fact Checker). §5 itself adds: _"Subagents
 should only be introduced when they provide meaningful isolation or
-quality improvement."*
+quality improvement."_
 
 We considered:
 
@@ -90,8 +90,8 @@ The implementation must:
 3. When a subagent is added, the ADR must reference
    `extensions/quality-eval/<category>.md` showing the bottleneck
    evidence.
-4. The Director's system prompt explicitly states: *"Subagents are
+4. The Director's system prompt explicitly states: _"Subagents are
    earned, not pre-declared. New subagents require measured evidence of
-   improvement."*
+   improvement."_
 5. Review §5 is preserved as-is in the architecture review; its list is
    a **roadmap**, not a spec. The Update Log captures this.

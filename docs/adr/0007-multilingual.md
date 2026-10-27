@@ -19,7 +19,7 @@ The pi-novel-scribe extension shipped v0.1 with English-only surface:
 User asked for a "big feature" that goes beyond display:
 > "not only display Chinese, but also using Chinese prompt/scenes/character etc."
 
-Concretely: Chinese characters should be able to *write a novel in Chinese* end-to-end — author types in Chinese, the LLM drafts Chinese prose, the critic reviews in Chinese, the UI messages are in Chinese, and the wiki surfaces Chinese archetypes.
+Concretely: Chinese characters should be able to _write a novel in Chinese_ end-to-end — author types in Chinese, the LLM drafts Chinese prose, the critic reviews in Chinese, the UI messages are in Chinese, and the wiki surfaces Chinese archetypes.
 
 ## Decision
 
@@ -57,7 +57,7 @@ command flag → chapter frontmatter → settings.json → auto-detect → fallb
 The 10-status enum keeps its English keys in frontmatter and in code:
 
 ```yaml
-status: drafted   # NOT 已起草
+status: drafted # NOT 已起草
 ```
 
 The **display** name is localized (`已起草` in zh, `Drafted` in en). Code that reads `frontmatter.status` continues to work unchanged. A `STATUS_DISPLAY` lookup table provides localized labels for tool output messages.
@@ -81,17 +81,17 @@ Public API:
 type Language = "en" | "zh"
 
 function resolveLanguage(
-  ctx: ExtensionContext,
-  opts?: { chapterPath?: string; flag?: Language },
+	ctx: ExtensionContext,
+	opts?: { chapterPath?: string; flag?: Language },
 ): Language
 
-function detectLanguage(text: string): Language | null  // null = can't decide
+function detectLanguage(text: string): Language | null // null = can't decide
 
 interface ToolStrings {
-  readonly description: string
-  readonly promptSnippet: string
-  readonly promptGuidelines: readonly string[]
-  readonly label: string
+	readonly description: string
+	readonly promptSnippet: string
+	readonly promptGuidelines: readonly string[]
+	readonly label: string
 }
 
 function toolStrings(lang: Language, toolName: string): ToolStrings

@@ -32,17 +32,17 @@ input it asks one clarifying question.
 The router shape is **adapted from** `~/.agents/route.yaml`, with
 novel-specific extensions:
 
-| Field | Purpose |
-|---|---|
-| `intent` | Stable name (e.g., `write_chapter`). |
-| `triggers` | Keywords, phrases, optional regex. |
-| `primary` | Main agent for this route. |
-| `support` | Optional parallel agents. |
-| `priority` | Tie-breaker when multiple routes match. |
-| `tier` | Model tier per agent (expensive/balanced/cheap). |
-| `requires_state` | Novel-state pre-flight (e.g., chapter must exist). |
+| Field                | Purpose                                            |
+| -------------------- | -------------------------------------------------- |
+| `intent`             | Stable name (e.g., `write_chapter`).               |
+| `triggers`           | Keywords, phrases, optional regex.                 |
+| `primary`            | Main agent for this route.                         |
+| `support`            | Optional parallel agents.                          |
+| `priority`           | Tie-breaker when multiple routes match.            |
+| `tier`               | Model tier per agent (expensive/balanced/cheap).   |
+| `requires_state`     | Novel-state pre-flight (e.g., chapter must exist). |
 | `transitions_status` | Workflow `status` values this route moves through. |
-| `recursion_caps` | Per-route override of default caps (Q14). |
+| `recursion_caps`     | Per-route override of default caps (Q14).          |
 
 Default routes ship with the extension; novel repos override via
 `<novelRepo>/.pi/novel-state.yaml`.
@@ -78,7 +78,7 @@ Default routes ship with the extension; novel repos override via
 - A (TS state machines): preferred in Q12 for typed safety but rejected
   here because the user requested route.yaml semantics (router, not
   state machine). The state machine can still live inside the
-  route-handling code, but the *router* is the yaml.
+  route-handling code, but the _router_ is the yaml.
 - C (YAML + TS handlers): most expressive but biggest surface area.
   We get most of the benefit of C without the handlers layer by keeping
   state machine implementation inside the route handler functions.

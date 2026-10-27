@@ -54,7 +54,7 @@ We can't depend on wst populating the `embedding` column on a fixed schedule. Bu
 - Extend `tests/_helpers/wikiFixture.ts` with a second schema fixture that includes a populated `embedding TEXT` column for all 5 wiki tables, populated with deterministic near-relevance vectors (e.g. character-shingle TF-IDF vectors that a real embedding model would produce). Deterministic → reproducible.
 - The fixture must support both BM25+LLM rerank (current path) AND cosine-vector rerank (proposed path).
 - New `tests/embedding-eval.test.ts` runs both paths against a fixed query set (e.g. 10–20 hand-crafted queries per table) and asserts the comparison result.
-- The Wiki integration: add a small `vectorRerankCandidates()` function in `extensions/wiki/rerank.ts` (or a new `extensions/wiki/vector.ts`) that consults the `embedding` column when present and returns cosine-similarity-ranked candidates. Per ADR-0012 §3, *only* if eval passes the Q31 threshold is this path wired into the public `searchWiki` flow.
+- The Wiki integration: add a small `vectorRerankCandidates()` function in `extensions/wiki/rerank.ts` (or a new `extensions/wiki/vector.ts`) that consults the `embedding` column when present and returns cosine-similarity-ranked candidates. Per ADR-0012 §3, _only_ if eval passes the Q31 threshold is this path wired into the public `searchWiki` flow.
 
 ### 4. Embedding decision threshold (Q31): tie
 
@@ -69,15 +69,15 @@ Rationale: the (i) thread is small and correctness-critical — Phase 13 ships i
 
 ## Implementation impact
 
-| File | Change |
-|---|---|
-| `extensions/agents/writer.ts` | replace `writeFileSync(scene.chapterPath, finalProse)` with `mergeProseIntoChapter(...)` (Phase 13) |
-| `extensions/workflow/status.ts` (or `extensions/novel/context.ts`) | new `mergeProseIntoChapter(chapterPath, prose)` helper that parses frontmatter, keeps it intact, appends prose (Phase 13) |
-| `tests/tool-writer.test.ts` | add a test that exercises the writer with pre-existing frontmatter (`chapter:`, `pov:`, `plan:`) and asserts all fields are preserved (Phase 13) — unit test that would have caught the bug |
-| `extensions/wiki/vector.ts` (new, Phase 14) | optional vector-rerank path consulted when `embedding` column is populated |
-| `extensions/wiki/index.ts` | extend `searchWiki` to dispatch to vector rerank when Q31 threshold is met (Phase 14, conditional) |
-| `tests/_helpers/wikiFixture.ts` | add a second fixture with populated `embedding` columns (Phase 14) |
-| `tests/embedding-eval.test.ts` (new, Phase 14) | run BM25+LLM vs vector-rerank against fixed query set; assert Q31 threshold |
+| File                                                               | Change                                                                                                                                                                                      |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `extensions/agents/writer.ts`                                      | replace `writeFileSync(scene.chapterPath, finalProse)` with `mergeProseIntoChapter(...)` (Phase 13)                                                                                         |
+| `extensions/workflow/status.ts` (or `extensions/novel/context.ts`) | new `mergeProseIntoChapter(chapterPath, prose)` helper that parses frontmatter, keeps it intact, appends prose (Phase 13)                                                                   |
+| `tests/tool-writer.test.ts`                                        | add a test that exercises the writer with pre-existing frontmatter (`chapter:`, `pov:`, `plan:`) and asserts all fields are preserved (Phase 13) — unit test that would have caught the bug |
+| `extensions/wiki/vector.ts` (new, Phase 14)                        | optional vector-rerank path consulted when `embedding` column is populated                                                                                                                  |
+| `extensions/wiki/index.ts`                                         | extend `searchWiki` to dispatch to vector rerank when Q31 threshold is met (Phase 14, conditional)                                                                                          |
+| `tests/_helpers/wikiFixture.ts`                                    | add a second fixture with populated `embedding` columns (Phase 14)                                                                                                                          |
+| `tests/embedding-eval.test.ts` (new, Phase 14)                     | run BM25+LLM vs vector-rerank against fixed query set; assert Q31 threshold                                                                                                                 |
 
 ## Consequences
 

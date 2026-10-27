@@ -20,8 +20,8 @@ canon. This project solves it with an **agent pipeline governed by an explicit,
 author-controlled state model**. The human author is the final authority on canon; the
 agents propose, validate, and draft — never decide alone.
 
-**Key architectural separation:** the *extension repo* (this code — stateless, reusable)
-is strictly divided from the *novel repo* (a peer git repo holding all prose, characters,
+**Key architectural separation:** the _extension repo_ (this code — stateless, reusable)
+is strictly divided from the _novel repo_ (a peer git repo holding all prose, characters,
 world, canon state for one novel). One extension install serves N novels. (ADR-0001)
 
 ## 2. The production line (core pipeline)
@@ -37,13 +37,13 @@ flowchart LR
     U --> F[Author approval]
 ```
 
-| Agent | Job | Artifact it emits |
-|---|---|---|
-| **Director** | Thin router. Matches user intent against `config/route.yaml` (9 intents), dispatches to agents. Never writes prose or canonical logic itself | routing decisions |
-| **Planner** | Structure: premise → snowflake → arcs → chapters → scene plans | `plan:` block in chapter frontmatter |
-| **Writer** | Prose drafting, consuming an approved plan | `prose:` in chapter + `proposed_state_changes` |
-| **Critic** | Actionable critique segmented by category: story / character / pacing / prose / foreshadowing | `review:` block with 5-field issues |
-| **Continuity** | Canon authority: validates writer proposals, derives character/reader knowledge, refreshes beliefs | `state/character-beliefs.yaml` |
+| Agent          | Job                                                                                                                                          | Artifact it emits                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Director**   | Thin router. Matches user intent against `config/route.yaml` (9 intents), dispatches to agents. Never writes prose or canonical logic itself | routing decisions                              |
+| **Planner**    | Structure: premise → snowflake → arcs → chapters → scene plans                                                                               | `plan:` block in chapter frontmatter           |
+| **Writer**     | Prose drafting, consuming an approved plan                                                                                                   | `prose:` in chapter + `proposed_state_changes` |
+| **Critic**     | Actionable critique segmented by category: story / character / pacing / prose / foreshadowing                                                | `review:` block with 5-field issues            |
+| **Continuity** | Canon authority: validates writer proposals, derives character/reader knowledge, refreshes beliefs                                           | `state/character-beliefs.yaml`                 |
 
 Each agent gets a **deterministically assembled scene-context packet** (chapter plan,
 scene plan, POV character's profile + beliefs filtered to ≤ current chapter, active story
@@ -57,7 +57,7 @@ first-class; beats are deferred.
 
 **The three-layer knowledge model** — designed for mysteries and unreliable narrators:
 
-1. **World truth** (`state/world-truth.yaml`) — authored only. What's *actually* true,
+1. **World truth** (`state/world-truth.yaml`) — authored only. What's _actually_ true,
    regardless of who knows it
 2. **Character knowledge** — derived from POV by default: "Sara knows X" because a scene
    where Sara holds POV states it. Author overrides via `state/character-beliefs.yaml`
@@ -133,7 +133,7 @@ stateDiagram-v2
 On session start, the extension scans for non-terminal chapters and offers to resume —
 pi crashing during `human_editing` never loses work.
 
-## 6. Human approval gates — the editor *is* the approval UI
+## 6. Human approval gates — the editor _is_ the approval UI
 
 Approval levels 0–3 (automatic / notify / ask / explicit approval). For level 2–3, the
 artifact opens in `$VISUAL` → `$EDITOR` → platform default, and **editor exit semantics
@@ -150,16 +150,16 @@ context.
 
 `config/route.yaml` defines 9 intents with keyword/phrase triggers and priority:
 
-| Intent | Priority | Primary | Notes |
-|---|---|---|---|
-| `approve_pending_change` / `reject_pending_change` | 200 | director | approval responses always outrank new work |
-| `write_chapter` | 100 | writer | the headline `/novel write` workflow |
-| `plan_chapter` | 95 | planner | `/novel plan` |
-| `review_chapter` | 90 | critic | `/novel review`; never auto-advances status |
-| `revise_chapter` | 88 | writer | `/novel revise`; apply review issues |
-| `continue_novel` | 80 | planner | `/novel continue`; resume from where left off |
-| `inspect_novel_state` | 70 | continuity | read-only, guaranteed |
-| `investigate_continuity_break` | 65 | continuity | diagnose suspected contradictions |
+| Intent                                             | Priority | Primary    | Notes                                         |
+| -------------------------------------------------- | -------- | ---------- | --------------------------------------------- |
+| `approve_pending_change` / `reject_pending_change` | 200      | director   | approval responses always outrank new work    |
+| `write_chapter`                                    | 100      | writer     | the headline `/novel write` workflow          |
+| `plan_chapter`                                     | 95       | planner    | `/novel plan`                                 |
+| `review_chapter`                                   | 90       | critic     | `/novel review`; never auto-advances status   |
+| `revise_chapter`                                   | 88       | writer     | `/novel revise`; apply review issues          |
+| `continue_novel`                                   | 80       | planner    | `/novel continue`; resume from where left off |
+| `inspect_novel_state`                              | 70       | continuity | read-only, guaranteed                         |
+| `investigate_continuity_break`                     | 65       | continuity | diagnose suspected contradictions             |
 
 Unmatched input → Director asks exactly one clarifying question. Explicit
 `/novel <cmd>` always beats keyword matching. Routes can carry `requires_state` gates
@@ -196,20 +196,20 @@ Unmatched input → Director asks exactly one clarifying question. Explicit
 
 v0.1 milestone **complete**: all 9 phases shipped (substrate → editor → agents →
 schemas → continuity → workflow → tmux widget → wiki → i18n), **232/232 tests
-passing**, ~82% statement coverage. Notably, subagents and skills are deliberately *not*
+passing**, ~82% statement coverage. Notably, subagents and skills are deliberately _not_
 shipped — per ADR-0005, they're "earned by measured need, not declared up front."
 
 ---
 
 ## Sources read
 
-| File | Role |
-|---|---|
-| `README.md`, `AGENTS.md` | project overview + conventions |
-| `CONTEXT.md` | canonical glossary — 16 locked decisions (Q1–Q16) |
-| `pi-novel-architecture-review.md` | the full spec (v0.4) |
-| `config/route.yaml` | Director routing table (9 intents + approval routes) |
-| `extensions/novel/schemas.ts` | P0 domain model (8 entities) |
-| `extensions/novel/canon.ts` | canon change lifecycle (propose → validate → apply) |
-| `extensions/workflow/transitions.ts` | 12-edge workflow state graph |
-| `docs/adr/0001–0007` | decision records (novel repo split, director router, subagents, wiki, i18n) |
+| File                                 | Role                                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| `README.md`, `AGENTS.md`             | project overview + conventions                                              |
+| `CONTEXT.md`                         | canonical glossary — 16 locked decisions (Q1–Q16)                           |
+| `pi-novel-architecture-review.md`    | the full spec (v0.4)                                                        |
+| `config/route.yaml`                  | Director routing table (9 intents + approval routes)                        |
+| `extensions/novel/schemas.ts`        | P0 domain model (8 entities)                                                |
+| `extensions/novel/canon.ts`          | canon change lifecycle (propose → validate → apply)                         |
+| `extensions/workflow/transitions.ts` | 12-edge workflow state graph                                                |
+| `docs/adr/0001–0007`                 | decision records (novel repo split, director router, subagents, wiki, i18n) |

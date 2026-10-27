@@ -15,18 +15,18 @@ flowchart LR
 ```
 
 The substrate (Phase 0.5) shipped early — opening `$VISUAL`/`$EDITOR` is a
-process fork. Phase 7 adds a *split-pane* layout where the editor runs in its
+process fork. Phase 7 adds a _split-pane_ layout where the editor runs in its
 own tmux pane and pi stays responsive in another, plus a pi-side custom
 widget that fills the status pane content whether or not tmux is used.
 
 ## Components
 
-| File | Purpose |
-|---|---|
-| [`tmux-conf-snippet.conf`](./tmux-conf-snippet.conf) | tmux.conf excerpt. Drop into your `~/.tmux.conf` to get the bind key + pane layout. |
-| [`layout.sh`](./layout.sh) | Bash helper that launches a tmux session named `novel-scribe` with the layout configured. |
+| File                                                                 | Purpose                                                                                                                            |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [`tmux-conf-snippet.conf`](./tmux-conf-snippet.conf)                 | tmux.conf excerpt. Drop into your `~/.tmux.conf` to get the bind key + pane layout.                                                |
+| [`layout.sh`](./layout.sh)                                           | Bash helper that launches a tmux session named `novel-scribe` with the layout configured.                                          |
 | [`../../extensions/tmux/widget.ts`](../../extensions/tmux/widget.ts) | The pi-side status widget — works in plain pi (no tmux required). Wired into `extensions/index.ts` via `registerStatusWidget(pi)`. |
-| [`../../tests/widget.test.ts`](../../tests/widget.test.ts) | 7 vitest specs covering `buildWidgetLines` against `collectWidgetState`. |
+| [`../../tests/widget.test.ts`](../../tests/widget.test.ts)           | 7 vitest specs covering `buildWidgetLines` against `collectWidgetState`.                                                           |
 
 ## Architectural stance
 
@@ -36,13 +36,12 @@ widget that fills the status pane content whether or not tmux is used.
   pane content.
 
 - The pi extension provides three things for Phase 7:
-
   1. **A custom widget** rendered in the pi TUI itself — works
-     *without* tmux. Shows resumable chapter list (Q9 data), current
+     _without_ tmux. Shows resumable chapter list (Q9 data), current
      active story lines, pending canon-change dockets. Wired on
      `session_start`.
 
-  2. **A tmux.conf excerpt** — the *user* copies relevant key bindings
+  2. **A tmux.conf excerpt** — the _user_ copies relevant key bindings
      into their existing `~/.tmux.conf`. Includes `bind +n` (open
      layout) and `bind +w` (open editor pane).
 
@@ -65,7 +64,7 @@ widget that fills the status pane content whether or not tmux is used.
 
 ## Why this is opt-in and not built-in
 
-Per review §16: *"Do not make tmux a dependency of the core workflow
-engine."* Any built-in coupling would force a multiplexer on users
+Per review §16: _"Do not make tmux a dependency of the core workflow
+engine."_ Any built-in coupling would force a multiplexer on users
 who don't want one. The widget works in plain pi; the tmux config
 opts in for those who want it.

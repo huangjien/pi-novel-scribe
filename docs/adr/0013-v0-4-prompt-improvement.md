@@ -11,13 +11,13 @@ v0.3 closed at 282/282 tests, Q1–Q32 locked, 12 ADRs accepted. Phase 10 (ADR-0
 
 A read of the wst SQLite snapshot at `scribe-2026-08-07-authorconsole-restore.db` (the corpus ADR-0006 §1 makes read-only) surfaces 26 rows in the `prompts` table, all `is_public=1`, in `en` + `zh`. The table layout:
 
-| column | type | meaning |
-|---|---|---|
-| `prompt_key` | TEXT NOT NULL | `system.<domain>.<verb>` |
-| `language` | TEXT NOT NULL | `en` / `zh` |
-| `content` | TEXT NOT NULL | the prompt body |
-| `is_public` | INTEGER | 1 for all shipped rows |
-| `(user_id, prompt_key, language)` | UNIQUE | per-user override surface |
+| column                            | type          | meaning                   |
+| --------------------------------- | ------------- | ------------------------- |
+| `prompt_key`                      | TEXT NOT NULL | `system.<domain>.<verb>`  |
+| `language`                        | TEXT NOT NULL | `en` / `zh`               |
+| `content`                         | TEXT NOT NULL | the prompt body           |
+| `is_public`                       | INTEGER       | 1 for all shipped rows    |
+| `(user_id, prompt_key, language)` | UNIQUE        | per-user override surface |
 
 Distinct prompt_keys:
 
@@ -86,19 +86,19 @@ These will resurface if / when we want the agent to consult the wst corpus at ru
 
 ## Implementation impact
 
-| File | Change |
-|---|---|
-| `prompts/writer.md` | rewrite (en) |
-| `prompts/zh/writer.md` | rewrite (zh) |
-| `prompts/planner.md` | rewrite (en) |
-| `prompts/zh/planner.md` | rewrite (zh) |
-| `prompts/critic.md` | rewrite (en) |
-| `prompts/zh/critic.md` | rewrite (zh) |
-| `prompts/continuity.md` | rewrite (en) |
-| `prompts/zh/continuity.md` | rewrite (zh) |
-| `prompts/director.md` | rewrite (en) |
-| `prompts/zh/director.md` | rewrite (zh) |
-| `tests/prompts.test.ts` | **new** — structural invariant tests on all 10 prompt files |
+| File                       | Change                                                      |
+| -------------------------- | ----------------------------------------------------------- |
+| `prompts/writer.md`        | rewrite (en)                                                |
+| `prompts/zh/writer.md`     | rewrite (zh)                                                |
+| `prompts/planner.md`       | rewrite (en)                                                |
+| `prompts/zh/planner.md`    | rewrite (zh)                                                |
+| `prompts/critic.md`        | rewrite (en)                                                |
+| `prompts/zh/critic.md`     | rewrite (zh)                                                |
+| `prompts/continuity.md`    | rewrite (en)                                                |
+| `prompts/zh/continuity.md` | rewrite (zh)                                                |
+| `prompts/director.md`      | rewrite (en)                                                |
+| `prompts/zh/director.md`   | rewrite (zh)                                                |
+| `tests/prompts.test.ts`    | **new** — structural invariant tests on all 10 prompt files |
 
 ## Consequences
 

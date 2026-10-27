@@ -13,7 +13,7 @@ A standalone git repository that owns everything **about one novel**:
 chapters, characters, world, story plans, foreshadowing, canon state. One
 install of pi-novel-scribe can serve N novel repos; each novel repo is
 independent and author-owned. The extension never writes into the novel repo
-*through* itself; it reads/writes via filesystem paths declared by the repo.
+_through_ itself; it reads/writes via filesystem paths declared by the repo.
 
 > **Decision:** Separate novel repo, configured path. The extension is a
 > tool; the novel repo is a peer project. (Locked 2026-09-13, Q1.)
@@ -60,7 +60,7 @@ extension refuses to overwrite approved prose in place). This is what makes
 Things the author commits to **before** they appear in prose: planned
 chapters, scene scaffolds, character profiles (psychology, not state),
 pre-written facts (`<!-- planned -->`), intentional foreshadowing
-commitments. These are *author intent*, not canon — they become canon only
+commitments. These are _author intent_, not canon — they become canon only
 when the relevant prose is approved.
 
 > **Decision:** Prose-as-source, canon-as-derived. Authored state lives
@@ -107,7 +107,7 @@ A novel has **N story lines**, each named (`sara-investigation`,
 `the-watcher`). Each line carries a `kind` (`bright | dark | subplot |
 red-herring`) and an independent state machine: `objective / state /
 next_target / hidden_information / planned_reveal`. The critic walks the
-*active* set on each chapter review; bright and dark are attributes, not
+_active_ set on each chapter review; bright and dark are attributes, not
 separate entity types.
 
 > **Decision:** Named N-lines, `kind: bright | dark | subplot |

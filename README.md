@@ -94,15 +94,15 @@ tests/                           28 vitest spec files (270 tests)
 
 ## Design docs
 
-| Doc | Purpose |
-|---|---|
-| [CONTEXT.md](CONTEXT.md) | Canonical glossary of 16 locked architectural terms |
-| [.planning/STATE.md](.planning/STATE.md) | Milestone + phase tracker (v0.1+, v0.2, and v0.3 complete; v0.4 scoped — Phase 15 prompt improvement pending) |</oldString>
-| [pi-novel-architecture-review.md](pi-novel-architecture-review.md) | Original spec (v0.4 with Update Log) |
-| [AGENTS.md](AGENTS.md) | Project guide for agent tools (conventions, rules) |
-| [docs/README.md](docs/README.md) | Project-wide doc index |
-| [docs/adr/](docs/adr/) | Architecture Decision Records (13 accepted; ADR-0008 amends ADR-0006 §6; ADR-0009 + 0010 cover v0.2; ADR-0012 covers v0.3 Q28–Q32; ADR-0013 covers v0.4 Q33–Q38) |
-| [docs/phase-7/README.md](docs/phase-7/README.md) | tmux UI stance + opt-in layout |
+| Doc                                                                | Purpose                                                                                                                                                          |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [CONTEXT.md](CONTEXT.md)                                           | Canonical glossary of 16 locked architectural terms                                                                                                              |
+| [.planning/STATE.md](.planning/STATE.md)                           | Milestone + phase tracker (v0.1+, v0.2, and v0.3 complete; v0.4 scoped — Phase 15 prompt improvement pending)                                                    | </oldString> |
+| [pi-novel-architecture-review.md](pi-novel-architecture-review.md) | Original spec (v0.4 with Update Log)                                                                                                                             |
+| [AGENTS.md](AGENTS.md)                                             | Project guide for agent tools (conventions, rules)                                                                                                               |
+| [docs/README.md](docs/README.md)                                   | Project-wide doc index                                                                                                                                           |
+| [docs/adr/](docs/adr/)                                             | Architecture Decision Records (13 accepted; ADR-0008 amends ADR-0006 §6; ADR-0009 + 0010 cover v0.2; ADR-0012 covers v0.3 Q28–Q32; ADR-0013 covers v0.4 Q33–Q38) |
+| [docs/phase-7/README.md](docs/phase-7/README.md)                   | tmux UI stance + opt-in layout                                                                                                                                   |
 
 ## License
 

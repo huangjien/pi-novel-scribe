@@ -5,6 +5,7 @@
 > convention).
 
 ## Milestone: v0.1+ — Design lock + substrate + agents + schemas + workflow + tmux + wiki + i18n + wiki-first context
+
 **Status:** complete
 **Started:** 2026-09-13
 **Closed:** 2026-09-20
@@ -30,6 +31,7 @@
 ---
 
 ## Milestone: v0.2 — Multi-chapter planning + sample novel + CI smoke
+
 **Status:** complete
 **Started:** 2026-09-20
 **Closed:** 2026-09-20
@@ -43,46 +45,46 @@
 
 ### Locked decisions (architectural)
 
-| # | Decision | Source |
-|---|---|---|
-| 1 | Separate novel repo, configured path (`novelRepo` config or `.pi/novel-state.yaml` marker) | Q1 / ADR-0001 |
-| 2 | Prose-as-source, canon-as-derived. Approved prose is append-only. | Q2 / ADR-0002 |
-| 3 | POV-derived character knowledge + authored `character-beliefs.yaml` overrides + authored `world-truth.yaml` | Q3 |
-| 4 | Named N-lines per novel; `kind: bright \| dark \| subplot \| red-herring` | Q4 |
-| 5 | Inline scene markers in chapter prose, markdown-safe (`@scene id=...`) | Q5 |
-| 6 | Character profile = `characters/<id>/profile.yaml` (authored) + `state/character-beliefs.yaml` (derived) | Q6 |
-| 7 | Scene context packet composed deterministically by extension, no LLM | Q7 |
-| 8 | Approval gates open authored artifact in `$VISUAL`/`$EDITOR`; save = approve/edit, no-change = approve-as-stated, no-save = rollback | Q8 |
-| 9 | Workflow `status` lives in chapter frontmatter; `session_start` scans for non-terminal states to offer resume | Q9 |
-| 10 | MVP scope: substrate-only first (extension + editor + status), agents later | Q10 / ADR-0003 |
-| 11 | Subagents earned by measured need, not declared up front (single Critic LLM w/ `category` field; reviewed before splitting out subagents) | Q11 / ADR-0005 |
-| 12 | Scene schema: authored fields (Plan-time intent) vs derived fields (extension extracts after drafting) | Q12 |
-| 13 | Workflows are prompt-driven (LLM orchestrates agents dynamically) | Q13 / ADR-0004 |
-| 14 | Recursion safety: hybrid — caps in Director prompt + runtime guards at tool-call boundary | Q14 |
-| 15 | Skills = multi-file `SKILL.md` (frontmatter + body), on-demand loading, optional `scripts/` + `references/` | Q15 |
-| 16 | Director = `config/route.yaml`-based router (modeled on `~/.agents/route.yaml`) with LLM fallback for ambiguous input (refines Q13) | Q16 / ADR-0004 |
-| 17 | Wiki DB path: `wikiDbPath` setting → wst snapshot default; never `sync.db` | Q17 / ADR-0006 |
-| 18 | Wiki retrieval: FTS5 BM25 candidates + single LLM rerank call (content judgment, not control flow) | Q18 / ADR-0006 |
-| 19 | Multilingual en/zh; override chain = command flag > chapter frontmatter > settings > auto-detect > fallback | Q19 / ADR-0007 |
-| 20 | Localized surface: tool descriptions, prompt snippets, status display, error messages | Q20 / ADR-0007 |
-| 21 | Wiki references composed into context packets by the extension (packet-level injection; agents cannot skip) | Q21 / ADR-0008 |
-| 22 | Plans must cite `template_refs`; exemption requires explicit `template_refs_exempt: true` + rationale | Q22 / ADR-0008 |
-| 23 | Wiki rerank cache is session-scoped in-process only; novel repo never written for cache | Q23 / ADR-0008 |
-| 24 | Multi-chapter scope: `/novel plan --chapters=N` batches plans only; drafting stays single-chapter (author-as-final-authority preserved) | Q24 / ADR-0009 *(placement: ADR-0011)* |
-| 25 | Planner batching semantics: one `ctx.modelRegistry.complete()` call returns N plan blocks; extension parses + validates per-block independently | Q25 / ADR-0009 *(placement: ADR-0011)* |
-| 26 | Sample novel shape: representative — 5 chapters, 2 characters, 2 story lines, 1 foreshadowing, 1 thread, 1 timeline event, no `wikiDbPath` (intentional degradation) | Q26 / ADR-0010 |
-| 27 | CI smoke runner: offscreen vitest with mocked ModelRegistry; no real LLM, no secrets, no flake | Q27 / ADR-0010 |
-| 28 | v0.3 scope: writer frontmatter safety (smoke-surfaced bug) + embedding retrieval evaluation (gated spike) | Q28 / ADR-0012 |
-| 29 | Writer fix = YAML-aware frontmatter merge (`mergeProseIntoChapter`: read frontmatter, keep intact, append LLM prose below `\n---`; no body-merge) | Q29 / ADR-0012 |
-| 30 | Embedding eval = synthesized SQLite fixture: extend `tests/_helpers/wikiFixture.ts` with populated `embedding TEXT` column; `tests/embedding-eval.test.ts` compares BM25+LLM vs cosine-vector rerank on a fixed 10–20 query set per table | Q30 / ADR-0012 |
-| 31 | Embedding decision threshold = tie: vector-rerank merges only when precision is not worse than BM25+LLM on the synthetic fixture; below-tie = documented "not adopted; reason = <finding>" | Q31 / ADR-0012 |
-| 32 | v0.3 phase structure = two phases (Phase 13 = writer safety; Phase 14 = embedding eval + conditional merge); so (i) ships regardless of (ii) verdict | Q32 / ADR-0012 |
-| 33 | v0.4 scope = α Markdown rewrite only: read wst `prompts` table once during Phase 15 design; do not expose wst rows at runtime this milestone | Q33 / ADR-0013 |
-| 34 | v0.4 coverage = 10 files: all 5 agents × {en, zh} rewritten in Phase 15; loader entry point (`loadAgentPrompt(name, lang)`) unchanged | Q34 / ADR-0013 |
-| 35 | v0.4 naming = Markdown stays single source of truth: no runtime wst enumeration, no `extensions/i18n/wstPrompts.ts` module this milestone | Q35 / ADR-0013 |
-| 36 | v0.4 per-agent scope = all 5 agents rewritten (writer / planner / critic / continuity / director, each in en + zh) | Q36 / ADR-0013 |
-| 37 | v0.4 phase structure = single Phase 15 (the original three-phase plan collapses because Q-A eliminates (β-1) + (β-2); only (α) remains) | Q37 / ADR-0013 |
-| 38 | v0.4 SQLite deferred to v0.5+: `prompts` table ingestion, `lookup_wst_prompt` tool, soft-fallback semantics, and `system.<domain>.<verb>` naming are all out of v0.4 scope | Q38 / ADR-0013 |
+| #   | Decision                                                                                                                                                                                                                                  | Source                                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 1   | Separate novel repo, configured path (`novelRepo` config or `.pi/novel-state.yaml` marker)                                                                                                                                                | Q1 / ADR-0001                          |
+| 2   | Prose-as-source, canon-as-derived. Approved prose is append-only.                                                                                                                                                                         | Q2 / ADR-0002                          |
+| 3   | POV-derived character knowledge + authored `character-beliefs.yaml` overrides + authored `world-truth.yaml`                                                                                                                               | Q3                                     |
+| 4   | Named N-lines per novel; `kind: bright \| dark \| subplot \| red-herring`                                                                                                                                                                 | Q4                                     |
+| 5   | Inline scene markers in chapter prose, markdown-safe (`@scene id=...`)                                                                                                                                                                    | Q5                                     |
+| 6   | Character profile = `characters/<id>/profile.yaml` (authored) + `state/character-beliefs.yaml` (derived)                                                                                                                                  | Q6                                     |
+| 7   | Scene context packet composed deterministically by extension, no LLM                                                                                                                                                                      | Q7                                     |
+| 8   | Approval gates open authored artifact in `$VISUAL`/`$EDITOR`; save = approve/edit, no-change = approve-as-stated, no-save = rollback                                                                                                      | Q8                                     |
+| 9   | Workflow `status` lives in chapter frontmatter; `session_start` scans for non-terminal states to offer resume                                                                                                                             | Q9                                     |
+| 10  | MVP scope: substrate-only first (extension + editor + status), agents later                                                                                                                                                               | Q10 / ADR-0003                         |
+| 11  | Subagents earned by measured need, not declared up front (single Critic LLM w/ `category` field; reviewed before splitting out subagents)                                                                                                 | Q11 / ADR-0005                         |
+| 12  | Scene schema: authored fields (Plan-time intent) vs derived fields (extension extracts after drafting)                                                                                                                                    | Q12                                    |
+| 13  | Workflows are prompt-driven (LLM orchestrates agents dynamically)                                                                                                                                                                         | Q13 / ADR-0004                         |
+| 14  | Recursion safety: hybrid — caps in Director prompt + runtime guards at tool-call boundary                                                                                                                                                 | Q14                                    |
+| 15  | Skills = multi-file `SKILL.md` (frontmatter + body), on-demand loading, optional `scripts/` + `references/`                                                                                                                               | Q15                                    |
+| 16  | Director = `config/route.yaml`-based router (modeled on `~/.agents/route.yaml`) with LLM fallback for ambiguous input (refines Q13)                                                                                                       | Q16 / ADR-0004                         |
+| 17  | Wiki DB path: `wikiDbPath` setting → wst snapshot default; never `sync.db`                                                                                                                                                                | Q17 / ADR-0006                         |
+| 18  | Wiki retrieval: FTS5 BM25 candidates + single LLM rerank call (content judgment, not control flow)                                                                                                                                        | Q18 / ADR-0006                         |
+| 19  | Multilingual en/zh; override chain = command flag > chapter frontmatter > settings > auto-detect > fallback                                                                                                                               | Q19 / ADR-0007                         |
+| 20  | Localized surface: tool descriptions, prompt snippets, status display, error messages                                                                                                                                                     | Q20 / ADR-0007                         |
+| 21  | Wiki references composed into context packets by the extension (packet-level injection; agents cannot skip)                                                                                                                               | Q21 / ADR-0008                         |
+| 22  | Plans must cite `template_refs`; exemption requires explicit `template_refs_exempt: true` + rationale                                                                                                                                     | Q22 / ADR-0008                         |
+| 23  | Wiki rerank cache is session-scoped in-process only; novel repo never written for cache                                                                                                                                                   | Q23 / ADR-0008                         |
+| 24  | Multi-chapter scope: `/novel plan --chapters=N` batches plans only; drafting stays single-chapter (author-as-final-authority preserved)                                                                                                   | Q24 / ADR-0009 _(placement: ADR-0011)_ |
+| 25  | Planner batching semantics: one `ctx.modelRegistry.complete()` call returns N plan blocks; extension parses + validates per-block independently                                                                                           | Q25 / ADR-0009 _(placement: ADR-0011)_ |
+| 26  | Sample novel shape: representative — 5 chapters, 2 characters, 2 story lines, 1 foreshadowing, 1 thread, 1 timeline event, no `wikiDbPath` (intentional degradation)                                                                      | Q26 / ADR-0010                         |
+| 27  | CI smoke runner: offscreen vitest with mocked ModelRegistry; no real LLM, no secrets, no flake                                                                                                                                            | Q27 / ADR-0010                         |
+| 28  | v0.3 scope: writer frontmatter safety (smoke-surfaced bug) + embedding retrieval evaluation (gated spike)                                                                                                                                 | Q28 / ADR-0012                         |
+| 29  | Writer fix = YAML-aware frontmatter merge (`mergeProseIntoChapter`: read frontmatter, keep intact, append LLM prose below `\n---`; no body-merge)                                                                                         | Q29 / ADR-0012                         |
+| 30  | Embedding eval = synthesized SQLite fixture: extend `tests/_helpers/wikiFixture.ts` with populated `embedding TEXT` column; `tests/embedding-eval.test.ts` compares BM25+LLM vs cosine-vector rerank on a fixed 10–20 query set per table | Q30 / ADR-0012                         |
+| 31  | Embedding decision threshold = tie: vector-rerank merges only when precision is not worse than BM25+LLM on the synthetic fixture; below-tie = documented "not adopted; reason = <finding>"                                                | Q31 / ADR-0012                         |
+| 32  | v0.3 phase structure = two phases (Phase 13 = writer safety; Phase 14 = embedding eval + conditional merge); so (i) ships regardless of (ii) verdict                                                                                      | Q32 / ADR-0012                         |
+| 33  | v0.4 scope = α Markdown rewrite only: read wst `prompts` table once during Phase 15 design; do not expose wst rows at runtime this milestone                                                                                              | Q33 / ADR-0013                         |
+| 34  | v0.4 coverage = 10 files: all 5 agents × {en, zh} rewritten in Phase 15; loader entry point (`loadAgentPrompt(name, lang)`) unchanged                                                                                                     | Q34 / ADR-0013                         |
+| 35  | v0.4 naming = Markdown stays single source of truth: no runtime wst enumeration, no `extensions/i18n/wstPrompts.ts` module this milestone                                                                                                 | Q35 / ADR-0013                         |
+| 36  | v0.4 per-agent scope = all 5 agents rewritten (writer / planner / critic / continuity / director, each in en + zh)                                                                                                                        | Q36 / ADR-0013                         |
+| 37  | v0.4 phase structure = single Phase 15 (the original three-phase plan collapses because Q-A eliminates (β-1) + (β-2); only (α) remains)                                                                                                   | Q37 / ADR-0013                         |
+| 38  | v0.4 SQLite deferred to v0.5+: `prompts` table ingestion, `lookup_wst_prompt` tool, soft-fallback semantics, and `system.<domain>.<verb>` naming are all out of v0.4 scope                                                                | Q38 / ADR-0013                         |
 
 ### ADRs
 
@@ -170,6 +172,7 @@ pi-novel-scribe/
 ---
 
 ## Milestone: v0.3 — Harden & extend
+
 **Status:** complete (Phase 13 + Phase 14 shipped)
 **Started:** 2026-09-20
 **Closed:** 2026-09-20
@@ -189,24 +192,25 @@ pi-novel-scribe/
 ---
 
 ## Milestone: v0.4 — Prompt improvement (Markdown-only)
-**Status:** scoped (ADR-0013 Accepted; Phase 15 pending implementation)
+
+**Status:** complete
 **Started:** 2026-09-20
-**Closed:** —
+**Closed:** 2026-09-22
 **Tests (at start):** 282/282 passing
-**Tests (target end):** 282 + 1 structural-invariants test on all 10 prompt files
+**Tests (at end):** 283/283 passing (282 + 1 structural-invariants test on all 10 prompt files; coverage 84.18% stmts / 87.32% lines). Post-milestone hardening (same change): +24 tests covering canon-approval.ts, tmux/widget.ts (collectWidgetState + registerStatusWidget), i18n/strings/zh.ts, i18n/prompts.ts loader contract → 307/307; those four files now at 100/100/100/91% stmts. Second hardening pass: +50 tests for novel/requires-state.ts, novel/schemas.ts, novel/continuity.ts, agents/continuity.ts → 357/357; those files at 93.75/100/97.75/95.55% stmts; total coverage 91.24% stmts.
 
-### Implementation phases — pending
+### Implementation phases — all shipped
 
-- [ ] **Phase 15 — Prompt improvement** (per ADR-0013 Q33–Q38):
-  1. Read the 26 rows in wst `prompts` table to extract the structural template (Identity / Critical Constraints / Core Objective / Procedure / Output Schema / Anti-patterns / Examples).
-  2. Design a single shared template applied to all 5 agents.
-  3. Rewrite `prompts/writer.md` (en + zh) — apply wst-style structure to current Writer responsibilities.
-  4. Rewrite `prompts/planner.md` (en + zh).
-  5. Rewrite `prompts/critic.md` (en + zh).
-  6. Rewrite `prompts/continuity.md` (en + zh).
-  7. Rewrite `prompts/director.md` (en + zh).
-  8. Add `tests/prompts.test.ts` asserting structural invariants on all 10 prompt files (each prompt has Identity + Critical Constraints + Procedure + Output Schema sections; lengths within bounds).
-  9. Run `npm run check` + `npm test` — existing 282 tests must stay green; structural test must pass.
+- [x] **Phase 15 — Prompt improvement** (per ADR-0013 Q33–Q38):
+  1. Read the 26 rows in wst `prompts` table (single design-time read, `scribe-2026-08-07-authorconsole-restore.db`) — confirmed template: identity → critical constraints → core objective → procedure → output schema → anti-patterns; zh rows ~⅓ en length by leaning on structure.
+  2. Canonical section set locked for all 10 files: Identity / Core Objective / Input Contract / Critical Constraints / Procedure / Output Schema / Anti-patterns / Failure conditions (en) · 身份 / 核心目标 / 输入契约 / 硬约束 / 流程 / 输出模式 / 反模式 / 失败条件 (zh). "Examples" omitted to bound token cost (wst rows run to 3705 chars).
+  3. `prompts/writer.md` (en + zh) — already in wst shape from the pre-ADR session; normalized: added `## Identity` / `## 身份`, renamed Goal → Core Objective / 目标 → 核心目标, unified frontmatter `status:` line.
+  4. `prompts/planner.md` (en + zh) — rewritten; now documents batch output shape `chapters: [{plan}, ...]` (ADR-0009, previously missing), Q22 citation gate, 8-scene budget, provisional tagging.
+  5. `prompts/critic.md` (en + zh) — rewritten; now states the 5-field contract with the extension's silent-drop behavior (extractIssues requires all five strings), closed enums, verbatim-evidence rule, pattern_ref grounding.
+  6. `prompts/continuity.md` (en + zh) — rewritten; three modes (inspect/investigate/refresh), draft-file-only writes, character-knowledge ≠ world-truth rule, unknown-over-invented stance.
+  7. `prompts/director.md` (en + zh) — rewritten; route-table-first, announce-before-dispatch, one-question ambiguity rule, recursion caps, runtime-throw surfacing (Phase 2 matcher).
+  8. `tests/prompts.test.ts` **new** — single structural-invariants test over all 10 files: frontmatter agent header, loader round-trip (`loadAgentPrompt` returns file bytes), 4 required sections per language, length bounds [800, 12000] chars. +1 test.
+  9. `npm run check` (biome + tsc) exit 0; `npx vitest run` 283/283 green.
 - [x] **(β-1) Wiki injection of `prompts` table** — **deferred to v0.5+** per ADR-0013 §6.
 - [x] **(β-2) `lookup_wst_prompt(prompt_key, language)` tool** — **deferred to v0.5+** per ADR-0013 §6.
 

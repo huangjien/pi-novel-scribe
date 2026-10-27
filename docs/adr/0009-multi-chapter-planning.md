@@ -25,7 +25,7 @@ author-as-final-authority approval gate per chapter.
 `/novel plan` accepts an optional `--chapters=N` flag (default 1, max 8).
 The flag batches N successive plan writes into one user command. Drafting
 (`/novel write`), review (`/novel review`), and approval gates remain
-single-chapter. Rationale: plans are *author intent* (Q12), so batching is
+single-chapter. Rationale: plans are _author intent_ (Q12), so batching is
 safe — author reviews plans collectively, then runs the existing per-
 chapter Writer flow. Prose batching would tension the author-as-final-
 authority hard rule (one mega-approval vs. per-chapter gates).
@@ -74,14 +74,14 @@ planner query derivation.
 
 ## Implementation impact
 
-| File | Change |
-|---|---|
-| `config/route.yaml` | `plan_chapter` route: agents `primary: planner, support: [wiki_search]`, optional `params: { chapters: int }` |
-| `extensions/agents/planner.ts` | extend to accept `chapters` count; build batched packet; parse + validate N blocks; per-block error reporting |
-| `extensions/novel/plan-context.ts` | `composePlanRequest` → `composeBatchPlanRequest(chapters)` returning a packet with `chapters: PlanRequest[]` |
-| `extensions/i18n/strings/{en,zh}.ts` | tool description for `delegate_to_planner` mentions `--chapters=N`; new error key for per-block failure summary |
-| `extensions/novel/schemas.ts` | optional: shared `BatchPlanResult` type (successes + per-block failures) |
-| `tests/` | new `tests/multi-plan.test.ts`: per-block failure isolation; N=1 backward compat; Q22 gate runs per block; wiki packet injected once for the batch |
+| File                                 | Change                                                                                                                                             |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config/route.yaml`                  | `plan_chapter` route: agents `primary: planner, support: [wiki_search]`, optional `params: { chapters: int }`                                      |
+| `extensions/agents/planner.ts`       | extend to accept `chapters` count; build batched packet; parse + validate N blocks; per-block error reporting                                      |
+| `extensions/novel/plan-context.ts`   | `composePlanRequest` → `composeBatchPlanRequest(chapters)` returning a packet with `chapters: PlanRequest[]`                                       |
+| `extensions/i18n/strings/{en,zh}.ts` | tool description for `delegate_to_planner` mentions `--chapters=N`; new error key for per-block failure summary                                    |
+| `extensions/novel/schemas.ts`        | optional: shared `BatchPlanResult` type (successes + per-block failures)                                                                           |
+| `tests/`                             | new `tests/multi-plan.test.ts`: per-block failure isolation; N=1 backward compat; Q22 gate runs per block; wiki packet injected once for the batch |
 
 ## Consequences
 
