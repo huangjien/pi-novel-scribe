@@ -72,6 +72,17 @@
 | 25 | Planner batching semantics: one `ctx.modelRegistry.complete()` call returns N plan blocks; extension parses + validates per-block independently | Q25 / ADR-0009 *(placement: ADR-0011)* |
 | 26 | Sample novel shape: representative — 5 chapters, 2 characters, 2 story lines, 1 foreshadowing, 1 thread, 1 timeline event, no `wikiDbPath` (intentional degradation) | Q26 / ADR-0010 |
 | 27 | CI smoke runner: offscreen vitest with mocked ModelRegistry; no real LLM, no secrets, no flake | Q27 / ADR-0010 |
+| 28 | v0.3 scope: writer frontmatter safety (smoke-surfaced bug) + embedding retrieval evaluation (gated spike) | Q28 / ADR-0012 |
+| 29 | Writer fix = YAML-aware frontmatter merge (`mergeProseIntoChapter`: read frontmatter, keep intact, append LLM prose below `\n---`; no body-merge) | Q29 / ADR-0012 |
+| 30 | Embedding eval = synthesized SQLite fixture: extend `tests/_helpers/wikiFixture.ts` with populated `embedding TEXT` column; `tests/embedding-eval.test.ts` compares BM25+LLM vs cosine-vector rerank on a fixed 10–20 query set per table | Q30 / ADR-0012 |
+| 31 | Embedding decision threshold = tie: vector-rerank merges only when precision is not worse than BM25+LLM on the synthetic fixture; below-tie = documented "not adopted; reason = <finding>" | Q31 / ADR-0012 |
+| 32 | v0.3 phase structure = two phases (Phase 13 = writer safety; Phase 14 = embedding eval + conditional merge); so (i) ships regardless of (ii) verdict | Q32 / ADR-0012 |
+| 33 | v0.4 scope = α Markdown rewrite only: read wst `prompts` table once during Phase 15 design; do not expose wst rows at runtime this milestone | Q33 / ADR-0013 |
+| 34 | v0.4 coverage = 10 files: all 5 agents × {en, zh} rewritten in Phase 15; loader entry point (`loadAgentPrompt(name, lang)`) unchanged | Q34 / ADR-0013 |
+| 35 | v0.4 naming = Markdown stays single source of truth: no runtime wst enumeration, no `extensions/i18n/wstPrompts.ts` module this milestone | Q35 / ADR-0013 |
+| 36 | v0.4 per-agent scope = all 5 agents rewritten (writer / planner / critic / continuity / director, each in en + zh) | Q36 / ADR-0013 |
+| 37 | v0.4 phase structure = single Phase 15 (the original three-phase plan collapses because Q-A eliminates (β-1) + (β-2); only (α) remains) | Q37 / ADR-0013 |
+| 38 | v0.4 SQLite deferred to v0.5+: `prompts` table ingestion, `lookup_wst_prompt` tool, soft-fallback semantics, and `system.<domain>.<verb>` naming are all out of v0.4 scope | Q38 / ADR-0013 |
 
 ### ADRs
 
@@ -86,6 +97,8 @@
 - [x] ADR-0009: Multi-chapter planning — scope = plan-only, batching = one LLM call → N plan blocks (Q24 + Q25)
 - [x] ADR-0010: Sample novel + CI smoke — representative shape, offscreen vitest runner (Q26 + Q27)
 - [x] ADR-0011: Multi-chapter `chapters` lives on the tool, not the route — clarifies ADR-0009 §Implementation impact (no new Q)
+- [x] ADR-0012: v0.3 — writer frontmatter safety + embedding retrieval evaluation (Q28–Q32)
+- [x] ADR-0013: v0.4 — prompt improvement (Markdown-only; SQLite deferred) (Q33–Q38)
 
 ### Implementation phases (per review §27, refined by Q10, Q11, Q13, Q15) — all shipped
 
@@ -156,8 +169,52 @@ pi-novel-scribe/
 
 ---
 
+## Milestone: v0.3 — Harden & extend
+**Status:** complete (Phase 13 + Phase 14 shipped)
+**Started:** 2026-09-20
+**Closed:** 2026-09-20
+**Tests (at start):** 280/280 passing
+**Tests (after Phase 13):** 281/281 passing
+**Tests (after Phase 14):** 282/282 passing (+1 embedding-eval test)
+
+### Implementation phases — all shipped
+
+- [x] **Phase 13 — Writer frontmatter safety** (per ADR-0012 Q29): shipped 2026-09-20. New `mergeProseIntoChapter(chapterPath, prose, fsAdapter?)` helper in `extensions/workflow/status.ts` reuses the existing js-yaml `parseFrontmatter`/`serializeFrontmatter` to preserve existing YAML frontmatter and append LLM prose below `\n---`. Fallback: file missing / empty / no frontmatter → synthesize default `{ status: "human_editing" }`. `extensions/agents/writer.ts` now calls `mergeProseIntoChapter` instead of `writeFileSync` (the latter was wiping frontmatter). New `tests/tool-writer.test.ts` case seeds a chapter with `chapter:`/`pov:`/`plan:`/`review:` frontmatter (simulating v0.2 end-state) and asserts all four keys survive the writer call. +1 test (281 total).
+- [x] **Phase 14 — Embedding retrieval evaluation + merge** (per ADR-0012 Q30/Q31): shipped 2026-09-20. Extended `tests/_helpers/wikiFixture.ts` with `seedEmbeddingEvalFixture()` populating the `embedding TEXT` column on 15 rows across 3 tables with deterministic 32-dim bag-of-hashes TF vectors (a vectorizer that mirrors `extensions/wiki/vector.ts::textToVector`). New `extensions/wiki/vector.ts` (`vectorSearch` / `vectorSearchAll` + `textToVector` + `cosine`) — exports `snippetColumnFor`/`summaryColumnFor`/`languageColumnFor` from `extensions/wiki/fts.ts` to keep the per-table column map single-sourced. New `tests/embedding-eval.test.ts` runs both paths over a 15-query fixed ground truth. **Eval result:** BM25+LLM precision@1 = 0.867 (13/15); vector precision@1 = 0.933 (14/15) → **Q31 verdict: tie-or-better → MERGED.** `extensions/wiki/index.ts` now calls `ftsSearchAll` + `vectorSearchAll`, dedupes the union by `(table, id)` (FTS5 first), and sends the merged candidate set to the LLM rerank. `extensions/wiki/vector.ts` stays exported for ad-hoc use. +1 test (282 total).
+
+---
+
 ## Open questions to revisit
 
-1. **Editor roundtrip testing without a real TTY** — currently the editor is injected (`open.ts` accepts an `Injection` type). Test harness substitutes `spawn` + `stat`. Sufficient for unit tests; not exercised against real editors yet.
-2. **Subagent split (Q11 / ADR-0005)** — gated on Critic quality metrics. Current Critic ships as a single LLM call with `category` field.
-3. **Embedding retrieval (ADR-0006 §7)** — gated on the wst snapshot's `embedding` column being populated (currently 0/13 story_lines, 24/49 character_templates). FTS5 + LLM rerank works on every row today; vector retrieval is a v0.3+ swap.
+---
+
+## Milestone: v0.4 — Prompt improvement (Markdown-only)
+**Status:** scoped (ADR-0013 Accepted; Phase 15 pending implementation)
+**Started:** 2026-09-20
+**Closed:** —
+**Tests (at start):** 282/282 passing
+**Tests (target end):** 282 + 1 structural-invariants test on all 10 prompt files
+
+### Implementation phases — pending
+
+- [ ] **Phase 15 — Prompt improvement** (per ADR-0013 Q33–Q38):
+  1. Read the 26 rows in wst `prompts` table to extract the structural template (Identity / Critical Constraints / Core Objective / Procedure / Output Schema / Anti-patterns / Examples).
+  2. Design a single shared template applied to all 5 agents.
+  3. Rewrite `prompts/writer.md` (en + zh) — apply wst-style structure to current Writer responsibilities.
+  4. Rewrite `prompts/planner.md` (en + zh).
+  5. Rewrite `prompts/critic.md` (en + zh).
+  6. Rewrite `prompts/continuity.md` (en + zh).
+  7. Rewrite `prompts/director.md` (en + zh).
+  8. Add `tests/prompts.test.ts` asserting structural invariants on all 10 prompt files (each prompt has Identity + Critical Constraints + Procedure + Output Schema sections; lengths within bounds).
+  9. Run `npm run check` + `npm test` — existing 282 tests must stay green; structural test must pass.
+- [x] **(β-1) Wiki injection of `prompts` table** — **deferred to v0.5+** per ADR-0013 §6.
+- [x] **(β-2) `lookup_wst_prompt(prompt_key, language)` tool** — **deferred to v0.5+** per ADR-0013 §6.
+
+---
+
+## Open questions to revisit
+
+1. **Editor roundtrip testing without a real TTY** — still deferred (v0.3 explicitly excluded per ADR-0012 §1). Current unit-test injection suffices.
+2. **Subagent split for Critic (Q11 / ADR-0005)** — still deferred. Re-evaluate when a Critic-quality metric exists; the v0.2 real-pi smoke produced one high-quality review (subjective) but no formal metric.
+3. **Continuity reading more domain files** (`foreshadowing.yaml` / `unresolved-threads.yaml` / `timeline.yaml`) — still deferred (v0.3 explicitly excluded per ADR-0012 §1). The sample includes those files for forward-compat but no caller asks for them yet.
+4. **CI integration of the real-pi smoke against `examples/novel-scribe-demo/`** — deferred (v0.3 explicitly excluded). Unit smoke runs in CI; promoting the real-pi smoke adds model-secrets + CI cost + flake. The smoke workflow is documented in `AGENTS.md` under "Real-pi smoke against the sample novel" for ad-hoc use.

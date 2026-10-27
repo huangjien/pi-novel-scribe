@@ -30,8 +30,10 @@ ADR directory: [`adr/`](./adr/)
 | [0009](./adr/0009-multi-chapter-planning.md) | Multi-chapter planning — plan-only scope, one LLM call → N plan blocks | Q24 + Q25 |
 | [0010](./adr/0010-sample-novel-and-ci-smoke.md) | Sample novel + CI smoke — representative shape, offscreen vitest runner | Q26 + Q27 |
 | [0011](./adr/0011-multi-chapter-tool-param.md) | Multi-chapter `chapters` lives on the tool, not the route — clarifies ADR-0009 §Implementation impact | — (no new Q) |
+| [0012](./adr/0012-v0-3-writer-safety-and-embedding-eval.md) | v0.3 — writer frontmatter safety + embedding retrieval evaluation | Q28 + Q29 + Q30 + Q31 + Q32 |
+| [0013](./adr/0013-v0-4-prompt-improvement.md) | v0.4 — prompt improvement (Markdown-only; SQLite deferred to v0.5+) | Q33 + Q34 + Q35 + Q36 + Q37 + Q38 |
 
-Eleven issued, zero open. Every locked Q-decision traces to an ADR; ADR-0011 is the only clarification-only ADR (no new Q).
+Thirteen issued, zero open. Every locked Q-decision traces to an ADR; ADR-0011 is the only clarification-only ADR (no new Q).
 
 ## Per-phase
 
@@ -53,7 +55,7 @@ flowchart TD
     R --> S[".planning/STATE.md<br/>maintainers: phase + ADR tracking"]
     R --> D[docs/]
     D --> DR["README.md (this file)<br/>project-wide doc index"]
-    D --> AD["adr/<br/>5 ADRs (Q1, Q2, Q10, Q13+Q16, Q11)"]
+    D --> AD["adr/<br/>11 accepted + 1 Proposed (Q1–Q27 + clarification ADR-0011; ADR-0012 Proposed)"]
     D --> P["phase-7/<br/>Phase 7 tmux stance + opt-in layout"]
 ```
 

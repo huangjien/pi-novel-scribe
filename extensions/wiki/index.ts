@@ -17,6 +17,7 @@ import {
 	type WikiResult,
 	type WikiTable,
 } from "./schema.ts"
+import { vectorSearchAll } from "./vector.ts"
 
 export interface SearchWikiOptions {
 	readonly tables?: readonly WikiTable[]
@@ -46,7 +47,9 @@ export async function searchWiki(
 
 	const dbPath = resolveWikiDbPath(ctx.cwd)
 	const db = openWikiDb(dbPath)
-	const candidates = ftsSearchAll(db, trimmed, tables, perTableLimit)
+	const ftsCandidates = ftsSearchAll(db, trimmed, tables, perTableLimit)
+	const vecCandidates = vectorSearchAll(db, trimmed, tables, perTableLimit)
+	const candidates = mergeCandidateSets(ftsCandidates, vecCandidates)
 
 	if (!rerank) {
 		return {
@@ -80,6 +83,33 @@ export async function searchWiki(
 function clamp(n: number, lo: number, hi: number): number {
 	if (Number.isNaN(n)) return lo
 	return Math.min(hi, Math.max(lo, n))
+}
+
+/**
+ * Merge FTS5 + vector candidate sets, deduped by (table, id), with
+ * FTS5 entries kept first (and at their original index when they also
+ * appear in the vector set — FTS5 is the historical default, so its
+ * ordering is treated as canonical).
+ */
+function mergeCandidateSets(
+	ftsCandidates: readonly import("./schema.ts").WikiCandidate[],
+	vecCandidates: readonly import("./schema.ts").WikiCandidate[],
+): import("./schema.ts").WikiCandidate[] {
+	const seen = new Set<string>()
+	const out: import("./schema.ts").WikiCandidate[] = []
+	for (const c of ftsCandidates) {
+		const key = `${c.table}\u0000${c.id}`
+		if (seen.has(key)) continue
+		seen.add(key)
+		out.push(c)
+	}
+	for (const c of vecCandidates) {
+		const key = `${c.table}\u0000${c.id}`
+		if (seen.has(key)) continue
+		seen.add(key)
+		out.push(c)
+	}
+	return out
 }
 
 export { openWikiDb, resolveWikiDbPath } from "./db.ts"

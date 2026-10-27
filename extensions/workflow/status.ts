@@ -106,6 +106,46 @@ export function applyStatus(
 	fsAdapter.writeFileSync(filePath, rebuilt, "utf8")
 }
 
+/**
+ * Merge new prose into a chapter file, preserving the existing YAML
+ * frontmatter (ADR-0012 Q29). Replaces `writeFileSync(path, prose)` calls
+ * that previously wiped the frontmatter.
+ *
+ * Behaviour by case:
+ *  - file missing or empty → write default frontmatter (status:
+ *    `human_editing`) + the prose as body
+ *  - file has frontmatter → preserve it as-is, replace body with prose
+ *  - file has no frontmatter → write a minimal frontmatter
+ *    (status: `human_editing`) + the prose as body
+ */
+export function mergeProseIntoChapter(
+	filePath: string,
+	prose: string,
+	fsAdapter: FsAdapter = defaultFsAdapter,
+): void {
+	let frontmatter: ChapterFrontmatter
+	let _existingBody: string
+	try {
+		const content = fsAdapter.readFileSync(filePath, "utf8")
+		if (content.length === 0) {
+			frontmatter = { status: "human_editing" }
+			_existingBody = ""
+		} else {
+			const parsed = parseFrontmatter(content)
+			frontmatter =
+				Object.keys(parsed.frontmatter).length > 0
+					? parsed.frontmatter
+					: { status: "human_editing" }
+			_existingBody = parsed.body
+		}
+	} catch {
+		frontmatter = { status: "human_editing" }
+		_existingBody = ""
+	}
+	const rebuilt = `${serializeFrontmatter(frontmatter)}\n\n${prose}`
+	fsAdapter.writeFileSync(filePath, rebuilt, "utf8")
+}
+
 // --- Internal helpers (out-of-line for complexity budget) ---
 
 interface FsAdapter {

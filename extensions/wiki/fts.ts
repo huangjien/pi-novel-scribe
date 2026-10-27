@@ -26,8 +26,8 @@ export function buildFtsQuery(rawQuery: string): string {
 	return tokens.map((t) => `"${t}"*`).join(" ")
 }
 
-/** Per-table snippet column (the prose the FTS5 shadow mirrors). */
-function snippetColumnFor(table: WikiTable): string {
+/** Per-table snippet column (the prose the FTS5 shadow mirrors). Exported so the vector-rerank helper (`extensions/wiki/vector.ts`) can SELECT the same column without duplicating the per-table map. */
+export function snippetColumnFor(table: WikiTable): string {
 	switch (table) {
 		case "story_lines":
 			return "content"
@@ -43,7 +43,8 @@ function snippetColumnFor(table: WikiTable): string {
 }
 
 /** Per-table summary column. */
-function summaryColumnFor(table: WikiTable): string {
+/** Per-table summary column. Exported so the vector-rerank helper (`extensions/wiki/vector.ts`) can SELECT the same column without duplicating the per-table map. */
+export function summaryColumnFor(table: WikiTable): string {
 	switch (table) {
 		case "story_lines":
 			return "description"
@@ -58,8 +59,8 @@ function summaryColumnFor(table: WikiTable): string {
 	}
 }
 
-/** Per-table language column. */
-function languageColumnFor(table: WikiTable): string {
+/** Per-table language column. Exported for the same reason as `snippetColumnFor` / `summaryColumnFor`. */
+export function languageColumnFor(table: WikiTable): string {
 	switch (table) {
 		case "story_lines":
 			return "language"

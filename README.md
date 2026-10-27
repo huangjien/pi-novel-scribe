@@ -1,7 +1,7 @@
 # pi-novel-scribe
 
 > **Pi extension for autonomous long-form novel writing.**
-> Status: **v0.1+ and v0.2 milestones complete** — design locked (Q1–Q27) + all 12 implementation phases shipped (Phase 0.5 substrate → Phase 12 sample novel + CI smoke), **280/280 tests passing**.
+> Status: **v0.1+, v0.2, and v0.3 milestones complete** (14 implementation phases shipped, **282/282 tests passing**). **v0.4 scoped** — Phase 15 prompt improvement: rewrite the 5 agent system prompts (`prompts/*.md` + `prompts/zh/*.md`) using the structural template distilled from the wst SQLite `prompts` corpus (per ADR-0013, Q33–Q38).
 
 A TypeScript [pi](https://pi.dev/) extension that orchestrates five agents
 (Director, Planner, Writer, Critic, Continuity) for novel writing. The
@@ -97,11 +97,11 @@ tests/                           28 vitest spec files (270 tests)
 | Doc | Purpose |
 |---|---|
 | [CONTEXT.md](CONTEXT.md) | Canonical glossary of 16 locked architectural terms |
-| [.planning/STATE.md](.planning/STATE.md) | Milestone + phase tracker (v0.1+ and v0.2 complete; Phase 12 shipped) |
+| [.planning/STATE.md](.planning/STATE.md) | Milestone + phase tracker (v0.1+, v0.2, and v0.3 complete; v0.4 scoped — Phase 15 prompt improvement pending) |</oldString>
 | [pi-novel-architecture-review.md](pi-novel-architecture-review.md) | Original spec (v0.4 with Update Log) |
 | [AGENTS.md](AGENTS.md) | Project guide for agent tools (conventions, rules) |
 | [docs/README.md](docs/README.md) | Project-wide doc index |
-| [docs/adr/](docs/adr/) | Architecture Decision Records (10 accepted; ADR-0008 amends ADR-0006 §6; ADR-0009 + 0010 cover v0.2) |
+| [docs/adr/](docs/adr/) | Architecture Decision Records (13 accepted; ADR-0008 amends ADR-0006 §6; ADR-0009 + 0010 cover v0.2; ADR-0012 covers v0.3 Q28–Q32; ADR-0013 covers v0.4 Q33–Q38) |
 | [docs/phase-7/README.md](docs/phase-7/README.md) | tmux UI stance + opt-in layout |
 
 ## License

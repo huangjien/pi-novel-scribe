@@ -135,4 +135,58 @@ describe("delegate_to_writer tool wrapper", () => {
 			tool.execute("c", { chapter_id: chapterPath }, undefined, undefined, ctx),
 		).rejects.toThrow(/LLM produced no prose/i)
 	})
+
+	it("preserves pre-existing frontmatter (chapter, pov, plan, review) when writing prose (ADR-0012 Q29)", async () => {
+		const pi = makeFakePi()
+		registerWriterAgent(pi)
+		const chapterPath = join(tmpDir, "0005.md")
+		// Seed a chapter that simulates the v0.2 end-state: planner wrote plan, critic wrote review,
+		// author is in human_editing. All four keys must survive the writer call.
+		writeFileSync(
+			chapterPath,
+			`---
+chapter: 5
+status: human_editing
+pov: sara
+plan: {"objective": "confrontation at the lighthouse", "template_refs": [{"table": "scene_templates", "id": "st-001", "how_used": "confrontation beat skeleton"}]}
+review: {summary: "tight chapter", issues: [{category: "pacing", severity: "low"}]}
+---
+
+# Chapter 5 — The Reveal
+`,
+			"utf8",
+		)
+
+		const complete = vi.fn().mockResolvedValue({
+			content: [
+				{
+					type: "text",
+					text: "@scene id=beach pov=sara\n\nThe watcher's voice, when it came, was John's.",
+				},
+			],
+		})
+		const ctx = makeFakeCtx({
+			cwd: tmpDir,
+			model: { id: "test-model" },
+			modelRegistry: { complete },
+		})
+		const tool = pi.get("delegate_to_writer")
+		await tool.execute("c", { chapter_id: chapterPath }, undefined, undefined, ctx)
+
+		const { readFileSync } = await import("node:fs")
+		const updated = readFileSync(chapterPath, "utf8")
+		// Frontmatter keys preserved (the bug fix). Match keys as substrings
+		// since serializeFrontmatter quotes string values: `pov: "sara"`.
+		expect(updated).toMatch(/chapter:\s*"?5"?/)
+		expect(updated).toMatch(/pov:\s*"?sara"?/)
+		expect(updated).toContain("plan:")
+		expect(updated).toContain("objective: confrontation at the lighthouse")
+		expect(updated).toContain("template_refs:")
+		expect(updated).toContain("review:")
+		expect(updated).toContain("tight chapter")
+		// Status transitioned to human_editing (applyStatus still runs)
+		expect(updated).toMatch(/status:\s*"?human_editing"?/)
+		// New prose present
+		expect(updated).toContain("watcher's voice, when it came, was John's")
+	})
 })

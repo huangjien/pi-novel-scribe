@@ -11,7 +11,6 @@
  *   - Multi-chapter scoped writing. Phase 3 is single-chapter.
  */
 
-import { writeFileSync } from "node:fs"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import {
@@ -30,7 +29,7 @@ import {
 	WRITER_TABLES,
 	writerWikiQuery,
 } from "../wiki/context.ts"
-import { applyStatus } from "../workflow/status.ts"
+import { applyStatus, mergeProseIntoChapter } from "../workflow/status.ts"
 
 export function registerWriterAgent(pi: ExtensionAPI): void {
 	pi.registerTool({
@@ -119,7 +118,7 @@ export function registerWriterAgent(pi: ExtensionAPI): void {
 				localizedError(lang, "editor_no_prose", "delegate_to_writer")
 			}
 
-			writeFileSync(scene.chapterPath, finalProse, "utf8")
+			mergeProseIntoChapter(scene.chapterPath, finalProse)
 			applyStatus(scene.chapterPath, "human_editing")
 
 			const wordCount = finalProse.split(/\s+/).length
